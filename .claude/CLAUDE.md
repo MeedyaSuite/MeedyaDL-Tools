@@ -14,9 +14,9 @@ Mirror repository for external tool binaries used by [MeedyaDL](https://github.c
   4. **upload-release** — carries forward unchanged assets from previous release, creates date-stamped release + updates `latest` tag, auto-commits `versions.json`
 - `versions.json` tracks last-packaged upstream versions (auto-committed by CI with `[skip ci]`)
 
-## Tools Mirrored (15)
+## Tools Mirrored (16)
 
-FFmpeg, yt-dlp, mp4decrypt, MP4Box, N_m3u8DL-RE, aria2c, fpcalc, get_iplayer, Votify, gytmdl, gamdl, AMdecrypt, Wrapper, MediaInfo, OF-Scraper
+FFmpeg, yt-dlp, mp4decrypt, MP4Box, N_m3u8DL-RE, aria2c, fpcalc, get_iplayer, Votify, gytmdl, gamdl, AMdecrypt, Wrapper, MediaInfo, OF-Scraper, MKVToolNix
 
 ## Asset Naming
 
@@ -44,7 +44,7 @@ FFmpeg, yt-dlp, mp4decrypt, MP4Box, N_m3u8DL-RE, aria2c, fpcalc, get_iplayer, Vo
 | Push to main | Full rebuild of all tools |
 | Manual dispatch | Full rebuild of all tools |
 | PR with `update-tools` label | Full rebuild (test only, no release) |
-| Monthly schedule (1st, 06:00 UTC) | Smart rebuild — only changed tools |
+| Daily schedule (06:00 UTC) | Smart rebuild — only changed tools |
 
 ## Key Files
 

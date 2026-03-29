@@ -19,7 +19,7 @@
 # Triggers:
 #   - Push to main branch
 #   - Pull request with 'update-tools' label
-#   - Monthly schedule (1st at 06:00 UTC)
+#   - Daily schedule (06:00 UTC)
 #   - Manual (workflow_dispatch)
 
 name: Populate Tools
@@ -30,7 +30,7 @@ on:
   pull_request:
     types: [labeled, synchronize]
   schedule:
-    - cron: "0 6 1 * *"
+    - cron: "0 6 * * *"
   workflow_dispatch:
 
 permissions:
@@ -68,6 +68,7 @@ jobs:
       gytmdl: ${{ steps.check.outputs.gytmdl }}
       gamdl: ${{ steps.check.outputs.gamdl }}
       ofscraper: ${{ steps.check.outputs.ofscraper }}
+      mkvtoolnix: ${{ steps.check.outputs.mkvtoolnix }}
     steps:
       - uses: actions/checkout@v6
 
@@ -82,7 +83,7 @@ jobs:
           if [ "${{ github.event_name }}" != "schedule" ]; then
             echo "force=true" >> "$GITHUB_OUTPUT"
             for tool in ffmpeg yt_dlp mp4decrypt mp4box nm3u8dlre aria2c fpcalc \
-                        get_iplayer mediainfo amdecrypt wrapper votify gytmdl gamdl ofscraper; do
+                        get_iplayer mediainfo amdecrypt wrapper votify gytmdl gamdl ofscraper mkvtoolnix; do
               echo "${tool}=true" >> "$GITHUB_OUTPUT"
             done
             echo "python_tools=true" >> "$GITHUB_OUTPUT"
@@ -172,6 +173,23 @@ jobs:
           echo "→ mp4box: REBUILD (nightly builds, always check)"
           ANY_BINARY="true"
 
+          # MKVToolNix: version scraped from download site (no GitHub releases)
+          MKVTOOLNIX_CURRENT=$(echo "$VERSIONS" | jq -r '."mkvtoolnix" // ""')
+          MKVTOOLNIX_LATEST=$(curl -sf "https://mkvtoolnix.download/sources/" \
+            | grep -oP 'mkvtoolnix-\K[0-9.]+(?=\.tar\.xz")' | sort -V | tail -1)
+          if [ -z "$MKVTOOLNIX_LATEST" ]; then
+            echo "mkvtoolnix=true" >> "$GITHUB_OUTPUT"
+            echo "→ mkvtoolnix: REBUILD (could not scrape version)"
+            ANY_BINARY="true"
+          elif [ "$MKVTOOLNIX_CURRENT" != "$MKVTOOLNIX_LATEST" ] || [ -z "$MKVTOOLNIX_CURRENT" ]; then
+            echo "mkvtoolnix=true" >> "$GITHUB_OUTPUT"
+            echo "→ mkvtoolnix: CHANGED ($MKVTOOLNIX_CURRENT → $MKVTOOLNIX_LATEST)"
+            ANY_BINARY="true"
+          else
+            echo "mkvtoolnix=false" >> "$GITHUB_OUTPUT"
+            echo "→ mkvtoolnix: unchanged ($MKVTOOLNIX_CURRENT)"
+          fi
+
           # --- PyPI tools ---
           check_pypi "votify"    "votify"
           check_pypi "gytmdl"    "gytmdl"
@@ -216,6 +234,16 @@ jobs:
               except Exception:
                   return ""
 
+          def mkvtoolnix_version():
+              import urllib.request, re
+              try:
+                  with urllib.request.urlopen("https://mkvtoolnix.download/sources/", timeout=15) as r:
+                      html = r.read().decode()
+                  versions = re.findall(r'mkvtoolnix-([0-9.]+)\.tar\.xz"', html)
+                  return sorted(versions, key=lambda v: [int(x) for x in v.split(".")])[-1] if versions else ""
+              except Exception:
+                  return ""
+
           versions = {}
           versions["ffmpeg"] = gh_api("repos/BtbN/FFmpeg-Builds/releases/latest", ".published_at")
           versions["yt-dlp"] = gh_api("repos/yt-dlp/yt-dlp/releases/latest")
@@ -232,6 +260,7 @@ jobs:
           versions["gytmdl"] = pypi_version("gytmdl")
           versions["gamdl"] = pypi_version("gamdl")
           versions["ofscraper"] = pypi_version("ofscraper")
+          versions["mkvtoolnix"] = mkvtoolnix_version()
 
           # Keep empty strings for tools we couldn't query (will rebuild next time)
           with open("versions-new.json", "w") as f:
@@ -966,6 +995,102 @@ jobs:
             echo "⚠ mediainfo binary not found in DMG"
           fi
           rm -rf work/extract work/pkg work/mediainfo.dmg
+
+      # =============================================================
+      # MKVToolNix
+      # Source: mkvtoolnix.download (no GitHub releases)
+      # Includes: mkvmerge, mkvextract, mkvpropedit, mkvinfo
+      # =============================================================
+
+      - name: "MKVToolNix: Detect latest version"
+        if: needs.check-versions.outputs.mkvtoolnix == 'true'
+        id: mkvtoolnix_meta
+        run: |
+          VER=$(curl -sf "https://mkvtoolnix.download/sources/" \
+            | grep -oP 'mkvtoolnix-\K[0-9.]+(?=\.tar\.xz")' | sort -V | tail -1)
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          echo "→ MKVToolNix latest: $VER"
+
+      - name: "MKVToolNix: Linux x86_64 (AppImage)"
+        if: needs.check-versions.outputs.mkvtoolnix == 'true'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          VER="${{ steps.mkvtoolnix_meta.outputs.version }}"
+          echo "→ Downloading MKVToolNix AppImage"
+          curl -fL --retry 3 -o work/mkvtoolnix.AppImage \
+            "https://mkvtoolnix.download/appimage/MKVToolNix_GUI-${VER}-x86_64.AppImage"
+          chmod +x work/mkvtoolnix.AppImage
+          # Extract CLI tools from AppImage
+          mkdir -p work/appimage_extract
+          cd work/appimage_extract
+          ../mkvtoolnix.AppImage --appimage-extract > /dev/null 2>&1
+          cd ../..
+          mkdir -p work/pkg
+          for bin in mkvmerge mkvextract mkvpropedit mkvinfo; do
+            BIN_PATH=$(find work/appimage_extract -name "$bin" -type f | head -1)
+            if [ -n "$BIN_PATH" ]; then
+              cp "$BIN_PATH" "work/pkg/$bin" && chmod +x "work/pkg/$bin"
+            fi
+          done
+          if [ "$(ls work/pkg/ | wc -l)" -gt 0 ]; then
+            tar -czf staging/mkvtoolnix-linux-x86_64.tar.gz -C work/pkg .
+            echo "✓ mkvtoolnix-linux-x86_64.tar.gz"
+          else
+            echo "⚠ No MKVToolNix binaries found in AppImage"
+          fi
+          rm -rf work/appimage_extract work/pkg work/mkvtoolnix.AppImage
+
+      - name: "MKVToolNix: Windows x86_64"
+        if: needs.check-versions.outputs.mkvtoolnix == 'true'
+        run: |
+          set -euo pipefail
+          VER="${{ steps.mkvtoolnix_meta.outputs.version }}"
+          echo "→ Downloading MKVToolNix Windows portable"
+          curl -fL --retry 3 -o work/mkvtoolnix.7z \
+            "https://mkvtoolnix.download/windows/releases/${VER}/mkvtoolnix-64-bit-${VER}.7z"
+          mkdir -p work/extract
+          7z x work/mkvtoolnix.7z -owork/extract -y > /dev/null 2>&1
+          mkdir -p work/pkg
+          for bin in mkvmerge.exe mkvextract.exe mkvpropedit.exe mkvinfo.exe; do
+            BIN_PATH=$(find work/extract -name "$bin" -type f | head -1)
+            if [ -n "$BIN_PATH" ]; then
+              cp "$BIN_PATH" "work/pkg/$bin"
+            fi
+          done
+          if [ "$(ls work/pkg/ | wc -l)" -gt 0 ]; then
+            (cd work/pkg && zip -q ../../staging/mkvtoolnix-windows-x86_64.zip *.exe)
+            echo "✓ mkvtoolnix-windows-x86_64.zip"
+          else
+            echo "⚠ No MKVToolNix binaries found in archive"
+          fi
+          rm -rf work/extract work/pkg work/mkvtoolnix.7z
+
+      - name: "MKVToolNix: macOS (DMG)"
+        if: needs.check-versions.outputs.mkvtoolnix == 'true'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          VER="${{ steps.mkvtoolnix_meta.outputs.version }}"
+          echo "→ Downloading MKVToolNix macOS DMG"
+          curl -fL --retry 3 -o work/mkvtoolnix.dmg \
+            "https://mkvtoolnix.download/macos/MKVToolNix-${VER}.dmg"
+          mkdir -p work/extract
+          7z x work/mkvtoolnix.dmg -owork/extract -y > /dev/null 2>&1
+          mkdir -p work/pkg
+          for bin in mkvmerge mkvextract mkvpropedit mkvinfo; do
+            BIN_PATH=$(find work/extract -name "$bin" -type f | head -1)
+            if [ -n "$BIN_PATH" ]; then
+              cp "$BIN_PATH" "work/pkg/$bin" && chmod +x "work/pkg/$bin"
+            fi
+          done
+          if [ "$(ls work/pkg/ | wc -l)" -gt 0 ]; then
+            tar -czf staging/mkvtoolnix-macos-aarch64.tar.gz -C work/pkg .
+            echo "✓ mkvtoolnix-macos-aarch64.tar.gz"
+          else
+            echo "⚠ No MKVToolNix binaries found in DMG"
+          fi
+          rm -rf work/extract work/pkg work/mkvtoolnix.dmg
 
       # =============================================================
       # get_iplayer

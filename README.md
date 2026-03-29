@@ -28,6 +28,7 @@ This repository serves as a **mirror** for external tool binaries that MeedyaDL 
 | **Wrapper** | FairPlay DRM decryption server | [WorldObservationLog/wrapper](https://github.com/WorldObservationLog/wrapper) | — |
 | **MediaInfo** | Media file metadata analysis | [MediaArea/MediaInfo](https://github.com/MediaArea/MediaInfo) | BSD-2-Clause |
 | **OF-Scraper** | OnlyFans content downloader | [datawhores/OF-Scraper](https://github.com/datawhores/OF-Scraper) | MIT |
+| **MKVToolNix** | MKV muxing/editing suite | [mkvtoolnix.download](https://mkvtoolnix.download/) | GPL v2 |
 
 ## Platform Support
 
@@ -48,8 +49,9 @@ This repository serves as a **mirror** for external tool binaries that MeedyaDL 
 | Wrapper | Y | — | — | — | — | — |
 | MediaInfo | Y | Y | — | Y | Y | Y |
 | OF-Scraper | Y | Y | — | Y | — | Y |
+| MKVToolNix | Y | — | — | Y | — | Y*** |
 
-**Y** = pre-built binary &nbsp; **Y*** = Perl script (requires Perl runtime) &nbsp; **Y**** = Windows installer &nbsp; **—** = not available
+**Y** = pre-built binary &nbsp; **Y*** = Perl script (requires Perl runtime) &nbsp; **Y**** = Windows installer &nbsp; **Y***** = x86_64 via Rosetta 2 &nbsp; **—** = not available
 
 ## Asset Naming Convention
 
@@ -59,7 +61,7 @@ This repository serves as a **mirror** for external tool binaries that MeedyaDL 
 
 | Component | Values |
 | --------- | ------ |
-| `tool_id` | `ffmpeg`, `yt-dlp`, `mp4decrypt`, `mp4box`, `nm3u8dlre`, `aria2c`, `fpcalc`, `get_iplayer`, `votify`, `gytmdl`, `gamdl`, `amdecrypt`, `wrapper`, `mediainfo`, `ofscraper` |
+| `tool_id` | `ffmpeg`, `yt-dlp`, `mp4decrypt`, `mp4box`, `nm3u8dlre`, `aria2c`, `fpcalc`, `get_iplayer`, `votify`, `gytmdl`, `gamdl`, `amdecrypt`, `wrapper`, `mediainfo`, `ofscraper`, `mkvtoolnix` |
 | `os` | `linux`, `windows`, `macos` |
 | `arch` | `x86_64`, `x86`, `aarch64`, `armhf` |
 | `ext` | `.tar.gz` (Linux/macOS), `.zip` (Windows), `.exe` (installers) |
@@ -89,7 +91,7 @@ The **Populate Tools** workflow automatically:
 | **Manual dispatch** | GitHub > Actions > Populate Tools > "Run workflow" | A specific tool was updated upstream |
 | **Push to main** | Automatic on every commit to main | Workflow/config changes |
 | **PR with label** | Add `update-tools` label to a PR | Testing workflow changes before merging |
-| **Monthly schedule** | Automatic on the 1st of each month at 06:00 UTC | Catches upstream updates automatically (only rebuilds changed tools) |
+| **Daily schedule** | Automatic every day at 06:00 UTC | Catches upstream updates promptly (only rebuilds changed tools) |
 
 ### How to update when an upstream tool releases a new version
 

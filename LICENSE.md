@@ -51,10 +51,11 @@ The binaries distributed via this repository's GitHub Releases are redistributed
 | **Wrapper** | wrapper | No explicit license | [WorldObservationLog/wrapper](https://github.com/WorldObservationLog/wrapper) |
 | **MediaInfo** | MediaInfo | BSD-2-Clause | [MediaArea/MediaInfo](https://github.com/MediaArea/MediaInfo) |
 | **OF-Scraper** | OF-Scraper | MIT | [datawhores/OF-Scraper](https://github.com/datawhores/OF-Scraper) |
+| **MKVToolNix** | MKVToolNix | GPL v2 | [mkvtoolnix.download](https://mkvtoolnix.download/) |
 
 ### License Compliance Notes
 
-- **GPL v2+ tools** (FFmpeg, mp4decrypt, aria2c): Source code is available at the upstream repositories linked above. These binaries are unmodified redistributions.
+- **GPL v2+ tools** (FFmpeg, mp4decrypt, aria2c, MKVToolNix): Source code is available at the upstream repositories linked above. These binaries are unmodified redistributions.
 - **LGPL v2.1 tools** (MP4Box, fpcalc): Dynamically linked where applicable. Source code available at upstream repositories.
 - **BSD-2-Clause tools** (MediaInfo): Very permissive; redistribution requires retaining the copyright notice and disclaimer.
 - **Unlicensed tools** (yt-dlp): Distributed under the Unlicense, placing the work in the public domain.
