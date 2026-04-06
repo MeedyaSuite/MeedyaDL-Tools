@@ -1,5 +1,5 @@
 {
-  "ffmpeg": "2026-04-04T14:11:18Z",
+  "ffmpeg": "2026-04-05T14:11:31Z",
   "yt-dlp": "2026.03.17",
   "mp4decrypt": "1-6-0-641",
   "mp4box": "",
@@ -14,5 +14,5 @@
   "gytmdl": "2.1.6",
   "gamdl": "2.9.3",
   "ofscraper": "3.14.7",
-  "mkvtoolnix": "97.0"
+  "mkvtoolnix": "98.0"
 }
