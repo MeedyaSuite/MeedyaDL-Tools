@@ -1,5 +1,5 @@
 {
-  "ffmpeg": "2026-04-20T14:22:58Z",
+  "ffmpeg": "2026-04-21T14:40:58Z",
   "yt-dlp": "2026.03.17",
   "mp4decrypt": "1-6-0-641",
   "mp4box": "",
@@ -9,10 +9,10 @@
   "get_iplayer": "v3.36",
   "mediainfo": "v26.01",
   "amdecrypt": "0.0.1",
-  "wrapper": "Wrapper.x86_64.1dac7bb",
+  "wrapper": "wrapper.x86_64.latest",
   "votify": "1.9.8",
   "gytmdl": "2.1.6",
-  "gamdl": "2.9.3",
+  "gamdl": "3.0",
   "ofscraper": "3.14.7",
   "mkvtoolnix": "98.0"
 }
