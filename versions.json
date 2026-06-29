@@ -1,9 +1,9 @@
 {
-  "ffmpeg": "2026-06-27T14:14:56Z",
+  "ffmpeg": "2026-06-28T14:09:34Z",
   "yt-dlp": "2026.06.09",
   "mp4decrypt": "1-6-0-641",
   "mp4box": "",
-  "nm3u8dlre": "v0.5.1-beta",
+  "nm3u8dlre": "v0.6.0-beta",
   "aria2c": "release-1.37.0",
   "fpcalc": "v1.6.0",
   "get_iplayer": "v3.36",
