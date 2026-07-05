@@ -154,8 +154,29 @@ jobs:
           # Wrapper: uses first entry in releases array (no /latest endpoint)
           check_github "wrapper" "WorldObservationLog/wrapper" "releases" ".[0].tag_name"
 
-          # FFmpeg: rolling 'latest' tag — check published_at as the version marker
-          check_github "ffmpeg" "BtbN/FFmpeg-Builds" "releases/latest" ".published_at"
+          # FFmpeg: multi-source, so the change signal must track BOTH.
+          #   - Linux / Windows : BtbN/FFmpeg-Builds rolling 'latest' (published_at)
+          #   - macOS x86_64     : evermeet.cx (refreshed alongside the BtbN signal)
+          #   - macOS arm64      : osxexperts.net static builds — own release cadence,
+          #                        tracked here so Apple-Silicon ffmpeg refreshes on time.
+          FF_CURRENT=$(echo "$VERSIONS" | jq -r '."ffmpeg" // ""')
+          FF_LATEST=$(gh api "repos/BtbN/FFmpeg-Builds/releases/latest" --jq ".published_at" 2>/dev/null || echo "")
+          FF_ARM_CURRENT=$(echo "$VERSIONS" | jq -r '."ffmpeg_macos_arm" // ""')
+          FF_ARM_LATEST=$(curl -sf -A "Mozilla/5.0" --retry 3 "https://www.osxexperts.net/" 2>/dev/null \
+            | grep -oE 'ffmpeg[0-9]+arm\.zip' | grep -oE '[0-9]+' | head -1 || echo "")
+          if [ -z "$FF_LATEST" ] || [ -z "$FF_ARM_LATEST" ]; then
+            echo "ffmpeg=true" >> "$GITHUB_OUTPUT"
+            echo "→ ffmpeg: REBUILD (could not fetch a source version)"
+            ANY_BINARY="true"
+          elif [ "$FF_CURRENT" != "$FF_LATEST" ] || [ "$FF_ARM_CURRENT" != "$FF_ARM_LATEST" ] \
+               || [ -z "$FF_CURRENT" ] || [ -z "$FF_ARM_CURRENT" ]; then
+            echo "ffmpeg=true" >> "$GITHUB_OUTPUT"
+            echo "→ ffmpeg: CHANGED (BtbN $FF_CURRENT → $FF_LATEST ; osxexperts-arm $FF_ARM_CURRENT → $FF_ARM_LATEST)"
+            ANY_BINARY="true"
+          else
+            echo "ffmpeg=false" >> "$GITHUB_OUTPUT"
+            echo "→ ffmpeg: unchanged (BtbN $FF_CURRENT ; osxexperts-arm $FF_ARM_CURRENT)"
+          fi
 
           # mp4decrypt: pinned version — compare against workflow env var
           MP4_CURRENT=$(echo "$VERSIONS" | jq -r '."mp4decrypt" // ""')
@@ -244,8 +265,24 @@ jobs:
               except Exception:
                   return ""
 
+          def osxexperts_ffmpeg_arm():
+              # Version token (e.g. "81") of the current osxexperts.net
+              # Apple-Silicon ffmpeg build — the change marker for macOS arm64.
+              import urllib.request, re
+              try:
+                  req = urllib.request.Request(
+                      "https://www.osxexperts.net/",
+                      headers={"User-Agent": "Mozilla/5.0"})
+                  with urllib.request.urlopen(req, timeout=15) as r:
+                      html = r.read().decode(errors="ignore")
+                  m = re.search(r'ffmpeg([0-9]+)arm\.zip', html)
+                  return m.group(1) if m else ""
+              except Exception:
+                  return ""
+
           versions = {}
           versions["ffmpeg"] = gh_api("repos/BtbN/FFmpeg-Builds/releases/latest", ".published_at")
+          versions["ffmpeg_macos_arm"] = osxexperts_ffmpeg_arm()
           versions["yt-dlp"] = gh_api("repos/yt-dlp/yt-dlp/releases/latest")
           versions["mp4decrypt"] = "${{ env.BENTO4_VERSION }}"
           versions["mp4box"] = ""  # nightly, no stable version
@@ -302,8 +339,11 @@ jobs:
         run: mkdir -p staging work
 
       # =============================================================
-      # FFmpeg
-      # Source: BtbN/FFmpeg-Builds (Linux/Windows), evermeet.cx (macOS)
+      # FFmpeg (+ ffprobe + ffplay)
+      # Source: BtbN/FFmpeg-Builds (Linux/Windows);
+      #         macOS arm64  = osxexperts.net static builds (real Apple Silicon)
+      #         macOS x86_64 = evermeet.cx static builds (Intel)
+      # ffprobe is required by downstream MeedyaConverter; ffplay included too.
       # =============================================================
 
       - name: "FFmpeg: Linux x86_64"
@@ -349,19 +389,45 @@ jobs:
           rm -rf work/extract work/pkg work/ffmpeg.zip
           echo "✓ ffmpeg-windows-x86_64.zip"
 
-      - name: "FFmpeg: macOS"
+      - name: "FFmpeg + ffprobe + ffplay: macOS (arm64 + x86_64)"
         if: needs.check-versions.outputs.ffmpeg == 'true'
         continue-on-error: true
         run: |
           set -euo pipefail
-          echo "→ Downloading FFmpeg macOS (evermeet.cx)"
-          curl -fL --retry 3 -o work/ffmpeg.zip "https://evermeet.cx/ffmpeg/getrelease/zip"
-          mkdir -p work/extract && unzip -q work/ffmpeg.zip -d work/extract
-          BIN=$(find work/extract -name "ffmpeg" -type f | head -1)
-          mkdir -p work/pkg && cp "$BIN" work/pkg/ffmpeg && chmod +x work/pkg/ffmpeg
-          tar -czf staging/ffmpeg-macos-aarch64.tar.gz -C work/pkg ffmpeg
-          rm -rf work/extract work/pkg work/ffmpeg.zip
-          echo "✓ ffmpeg-macos-aarch64.tar.gz"
+          # Browser UA + retries: osxexperts.net sits behind bot-protection that
+          # 503s bare curl but serves normally to a browser-like client.
+          UA='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15'
+
+          # Discover the current osxexperts Apple-Silicon version token (e.g. "81")
+          # so the arm64 URLs track upstream bumps automatically.
+          ARM_VER="$(curl -fsL -A "$UA" --retry 3 "https://www.osxexperts.net/" \
+            | grep -oE 'ffmpeg[0-9]+arm\.zip' | grep -oE '[0-9]+' | head -1)"
+          if [ -z "$ARM_VER" ]; then
+            echo "✗ could not determine osxexperts arm version" >&2; exit 1
+          fi
+          echo "→ osxexperts Apple-Silicon version token: ${ARM_VER}"
+
+          package_macos() {
+            local tool="$1" arch="$2" url="$3"
+            echo "→ ${tool} macOS ${arch}  (${url})"
+            rm -rf work/ex work/pk; mkdir -p work/ex work/pk
+            curl -fL --retry 5 --retry-delay 3 -A "$UA" -o work/dl.zip "$url"
+            unzip -q work/dl.zip -d work/ex
+            local bin; bin="$(find work/ex -type f -name "$tool" | head -1)"
+            if [ -z "$bin" ]; then echo "✗ ${tool} not found in ${url}" >&2; return 1; fi
+            cp "$bin" "work/pk/${tool}"; chmod +x "work/pk/${tool}"
+            tar -czf "staging/${tool}-macos-${arch}.tar.gz" -C work/pk "$tool"
+            rm -rf work/ex work/pk work/dl.zip
+            echo "✓ ${tool}-macos-${arch}.tar.gz"
+          }
+
+          # ffmpeg + ffprobe FIRST (required downstream); ffplay last (optional).
+          for tool in ffmpeg ffprobe ffplay; do
+            # arm64 (Apple Silicon) — osxexperts.net static builds (real arm64)
+            package_macos "$tool" "aarch64" "https://www.osxexperts.net/${tool}${ARM_VER}arm.zip"
+            # x86_64 (Intel) — evermeet.cx static builds
+            package_macos "$tool" "x86_64"  "https://evermeet.cx/ffmpeg/getrelease/${tool}/zip"
+          done
 
       # =============================================================
       # yt-dlp
@@ -1394,6 +1460,23 @@ jobs:
           echo "=== All assets ==="
           ls -lh staging/
           echo "Total: $(ls staging/ | wc -l) assets"
+
+      - name: Generate SHA256SUMS
+        run: |
+          set -euo pipefail
+          # Publish a SHA256SUMS asset so downstream consumers (e.g.
+          # MeedyaConverter, which code-signs + notarises bundled tools) can
+          # verify each download against this release's own checksums.
+          # Format is `shasum -c`-compatible: `<sha256>␠␠<filename>`.
+          cd staging
+          rm -f SHA256SUMS
+          # Hash every asset except the sums file itself; carry-forward-safe.
+          mapfile -t files < <(ls -1 | grep -v '^SHA256SUMS$')
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "⚠ no assets to checksum"; exit 0
+          fi
+          sha256sum "${files[@]}" > SHA256SUMS
+          echo "→ SHA256SUMS written ($(wc -l < SHA256SUMS) entries)"
 
       - name: Determine release tag
         id: tag
