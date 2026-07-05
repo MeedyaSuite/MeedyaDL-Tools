@@ -391,7 +391,11 @@ jobs:
 
       - name: "FFmpeg + ffprobe + ffplay: macOS (arm64 + x86_64)"
         if: needs.check-versions.outputs.ffmpeg == 'true'
-        continue-on-error: true
+        # NOT continue-on-error: ffmpeg + ffprobe are required downstream, so a
+        # fetch failure must fail this job (which blocks the release) rather
+        # than silently ship a mirror missing them. ffplay is handled
+        # best-effort below. (Re-add continue-on-error only if you'd rather a
+        # transient source outage fall back to carry-forward assets.)
         run: |
           set -euo pipefail
           # Browser UA + retries: osxexperts.net sits behind bot-protection that
@@ -421,13 +425,20 @@ jobs:
             echo "✓ ${tool}-macos-${arch}.tar.gz"
           }
 
-          # ffmpeg + ffprobe FIRST (required downstream); ffplay last (optional).
-          for tool in ffmpeg ffprobe ffplay; do
+          # Required tools — a failure here fails the job (blocks the release).
+          for tool in ffmpeg ffprobe; do
             # arm64 (Apple Silicon) — osxexperts.net static builds (real arm64)
             package_macos "$tool" "aarch64" "https://www.osxexperts.net/${tool}${ARM_VER}arm.zip"
             # x86_64 (Intel) — evermeet.cx static builds
             package_macos "$tool" "x86_64"  "https://evermeet.cx/ffmpeg/getrelease/${tool}/zip"
           done
+
+          # ffplay — optional (drives only the in-app preview). Best-effort: run
+          # in a subshell so a failure can't trip `set -e` in the parent.
+          ( package_macos ffplay aarch64 "https://www.osxexperts.net/ffplay${ARM_VER}arm.zip" ) \
+            || echo "⚠ ffplay macOS arm64 unavailable (optional) — skipped"
+          ( package_macos ffplay x86_64  "https://evermeet.cx/ffmpeg/getrelease/ffplay/zip" ) \
+            || echo "⚠ ffplay macOS x86_64 unavailable (optional) — skipped"
 
       # =============================================================
       # yt-dlp
