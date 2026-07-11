@@ -1,5 +1,5 @@
 {
-  "ffmpeg": "2026-07-08T14:13:38Z",
+  "ffmpeg": "2026-07-10T15:12:14Z",
   "ffmpeg_macos_arm": "81",
   "yt-dlp": "2026.07.04",
   "mp4decrypt": "1-6-0-641",
@@ -13,7 +13,7 @@
   "wrapper": "wrapper.x86_64.latest",
   "votify": "1.9.9",
   "gytmdl": "2.1.6",
-  "gamdl": "3.8.1",
+  "gamdl": "3.8.2",
   "ofscraper": "3.14.7",
   "mkvtoolnix": "100.0"
 }
