@@ -15,5 +15,9 @@
   "gytmdl": "2.1.6",
   "gamdl": "3.8.5",
   "ofscraper": "3.14.7",
-  "mkvtoolnix": "101.0"
+  "mkvtoolnix": "101.0",
+  "ddrescue": "1.28",
+  "cdrdao": "1.2.5",
+  "cdparanoia": "10.2",
+  "wodim": "1.1.11"
 }
