@@ -38,6 +38,15 @@ permissions:
 
 env:
   BENTO4_VERSION: "1-6-0-641"
+  # GPL optical-disc tools (issue MeedyaConverter#494 / DR-0001). Pinned —
+  # these release rarely, so an explicit version is clearer than an upstream
+  # version-check hook. Built from source and SOURCE-ARCHIVED alongside the
+  # binaries so the GPL corresponding-source obligation is met from this repo's
+  # own releases (the written offer in the MeedyaConverter .dmg points here).
+  DDRESCUE_VERSION: "1.28"
+  CDRDAO_VERSION: "1.2.5"
+  CDPARANOIA_VERSION: "10.2"
+  WODIM_VERSION: "1.1.11"
 
 jobs:
   # =====================================================================
@@ -773,6 +782,51 @@ jobs:
           tar -czf staging/aria2c-linux-x86_64.tar.gz -C work/pkg aria2c
           rm -rf work/aria2-build work/pkg work/aria2-src.tar.gz
           echo "✓ aria2c-linux-x86_64.tar.gz"
+
+      # =============================================================
+      # GPL optical-disc tools (MeedyaConverter#494 / DR-0001)
+      # =============================================================
+      # These feed MeedyaConverter's disc-backup-imaging feature (#492/#495),
+      # Direct distribution only. Each is built FROM SOURCE and the exact
+      # source tarball is archived next to the binary, so this repo's release
+      # carries the GPL corresponding source (the .dmg's written offer points
+      # here).
+      #
+      # Platform scope is macOS + Linux, matching #495's target; cdrdao/wodim
+      # are Linux-centric and Windows optical imaging is a separate effort.
+      #
+      # STATUS: ddrescue (portable, trivial build) is the working template
+      # below. cdrdao / cdparanoia / wodim and the macOS-universal builds
+      # (which need a macos runner this workflow does not yet have — macOS
+      # assets are currently DOWNLOADED, not compiled) are follow-ups tracked
+      # in DEV_Status.md; they follow this same fetch -> build -> stage binary
+      # + stage source pattern. Do not assume they are wired until their CI is
+      # green.
+
+      - name: "ddrescue: Linux x86_64 (compile from source) + source archive"
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          VER="${DDRESCUE_VERSION}"
+          echo "→ Building GNU ddrescue ${VER} from source"
+          # GNU releases ddrescue as an .lz (lzip) tarball.
+          sudo apt-get install -y lzip
+          curl -fL --retry 3 -o work/ddrescue-src.tar.lz \
+            "https://ftp.gnu.org/gnu/ddrescue/ddrescue-${VER}.tar.lz"
+          # Archive the exact source we build from (GPLv3 corresponding source).
+          cp work/ddrescue-src.tar.lz "staging/ddrescue-${VER}.src.tar.lz"
+          mkdir -p work/ddrescue-build
+          tar --lzip -xf work/ddrescue-src.tar.lz -C work/ddrescue-build --strip-components=1
+          cd work/ddrescue-build
+          ./configure CXXFLAGS='-O2'
+          make -j"$(nproc)"
+          strip ddrescue
+          cd ../..
+          mkdir -p work/pkg && cp work/ddrescue-build/ddrescue work/pkg/ddrescue
+          chmod +x work/pkg/ddrescue
+          tar -czf staging/ddrescue-linux-x86_64.tar.gz -C work/pkg ddrescue
+          rm -rf work/ddrescue-build work/pkg work/ddrescue-src.tar.lz
+          echo "✓ ddrescue-linux-x86_64.tar.gz + ddrescue-${VER}.src.tar.lz"
 
       # =============================================================
       # fpcalc (Chromaprint)
