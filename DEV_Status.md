@@ -28,6 +28,8 @@ Current build status and tool availability for MeedyaDL-Tools.
 | MediaInfo | OK | OK | — | — | OK | OK | OK |
 | OF-Scraper | OK | OK | — | — | OK | — | OK |
 | MKVToolNix | OK***** | — | — | — | OK | — | OK***** |
+| potrace | OK* | OK* | — | — | — | OK* |
+| vtracer | OK* | OK* | — | — | — | OK* |
 
 **Legend:**
 
@@ -64,6 +66,7 @@ Current build status and tool availability for MeedyaDL-Tools.
 | **MP4Box** | Extracted from platform-specific installers (.deb, .exe, .pkg) |
 | **MediaInfo** | Binaries from mediaarea.net (not GitHub releases); macOS DMG extracted via 7z |
 | **MKVToolNix** | Binaries from mkvtoolnix.download; Linux via AppImage extraction; macOS x86_64 only (Rosetta); macOS support ending H2 2026 |
+| **potrace/vtracer (macOS)** | Compiled on `macos-latest`; x86_64 cross-built from the arm64 host; two thin assets, lipo'd by the consumer |
 
 ## Version Tracking
 
