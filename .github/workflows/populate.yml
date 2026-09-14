@@ -38,6 +38,14 @@ permissions:
 
 env:
   BENTO4_VERSION: "1-6-0-641"
+  # Vector tracing tools for MeedyaConverter (#473 / #494, DR-0001). PINNED on
+  # purpose: MeedyaConverter's argument builders are coupled to each tool's
+  # exact CLI flag set, so a bump is a deliberate PR here plus a builder+test
+  # change there — never an automatic upstream follow. Both are compiled from
+  # source on every platform; potrace (GPL-2.0-or-later) additionally has its
+  # exact source tarball archived next to the binaries (corresponding source).
+  POTRACE_VERSION: "1.16"
+  VTRACER_VERSION: "1.0.0-alpha.4"
 
 jobs:
   # =====================================================================
@@ -69,6 +77,8 @@ jobs:
       gamdl: ${{ steps.check.outputs.gamdl }}
       ofscraper: ${{ steps.check.outputs.ofscraper }}
       mkvtoolnix: ${{ steps.check.outputs.mkvtoolnix }}
+      potrace: ${{ steps.check.outputs.potrace }}
+      vtracer: ${{ steps.check.outputs.vtracer }}
     steps:
       - uses: actions/checkout@v7
 
@@ -83,7 +93,8 @@ jobs:
           if [ "${{ github.event_name }}" != "schedule" ]; then
             echo "force=true" >> "$GITHUB_OUTPUT"
             for tool in ffmpeg yt_dlp mp4decrypt mp4box nm3u8dlre aria2c fpcalc \
-                        get_iplayer mediainfo amdecrypt wrapper votify gytmdl gamdl ofscraper mkvtoolnix; do
+                        get_iplayer mediainfo amdecrypt wrapper votify gytmdl gamdl ofscraper mkvtoolnix \
+                        potrace vtracer; do
               echo "${tool}=true" >> "$GITHUB_OUTPUT"
             done
             echo "python_tools=true" >> "$GITHUB_OUTPUT"
@@ -189,6 +200,20 @@ jobs:
             echo "→ mp4decrypt: unchanged ($MP4_CURRENT)"
           fi
 
+          # potrace / vtracer: pinned versions — compare against workflow env vars
+          for pin in "potrace=${{ env.POTRACE_VERSION }}" "vtracer=${{ env.VTRACER_VERSION }}"; do
+            key="${pin%%=*}"; want="${pin#*=}"
+            cur=$(echo "$VERSIONS" | jq -r ".\"$key\" // \"\"")
+            if [ "$cur" != "$want" ] || [ -z "$cur" ]; then
+              echo "${key}=true" >> "$GITHUB_OUTPUT"
+              echo "→ $key: CHANGED ($cur → $want)"
+              ANY_BINARY="true"
+            else
+              echo "${key}=false" >> "$GITHUB_OUTPUT"
+              echo "→ $key: unchanged ($cur)"
+            fi
+          done
+
           # MP4Box: nightly builds — always rebuild
           echo "mp4box=true" >> "$GITHUB_OUTPUT"
           echo "→ mp4box: REBUILD (nightly builds, always check)"
@@ -285,6 +310,8 @@ jobs:
           versions["ffmpeg_macos_arm"] = osxexperts_ffmpeg_arm()
           versions["yt-dlp"] = gh_api("repos/yt-dlp/yt-dlp/releases/latest")
           versions["mp4decrypt"] = "${{ env.BENTO4_VERSION }}"
+          versions["potrace"] = "${{ env.POTRACE_VERSION }}"
+          versions["vtracer"] = "${{ env.VTRACER_VERSION }}"
           versions["mp4box"] = ""  # nightly, no stable version
           versions["nm3u8dlre"] = gh_api("repos/nilaoda/N_m3u8DL-RE/releases/latest")
           versions["aria2c"] = gh_api("repos/aria2/aria2/releases/latest")
@@ -1407,6 +1434,190 @@ jobs:
           if-no-files-found: warn
 
   # =====================================================================
+  # Job 2b: Vector tracing tools for MeedyaConverter (#473 / #494)
+  #   potrace  — C/autotools, GPL-2.0-or-later, source tarball ARCHIVED
+  #   vtracer  — Rust/cargo, MIT OR Apache-2.0
+  # Compiled FROM SOURCE on every platform (DR-0001 provenance rule); macOS
+  # ships two thin per-arch tarballs (the consumer lipo-combines them, as it
+  # does for ffmpeg). Versions are pinned in env (see POTRACE_VERSION).
+  # =====================================================================
+  build-tracing-tools:
+    needs: [check-versions]
+    if: >-
+      (needs.check-versions.outputs.potrace == 'true' ||
+       needs.check-versions.outputs.vtracer == 'true') &&
+      (github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'update-tools'))
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            arch: x86_64
+          - os: ubuntu-24.04-arm
+            platform: linux
+            arch: aarch64
+          - os: macos-latest
+            platform: macos
+            arch: aarch64      # host arch; this leg ALSO cross-builds x86_64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Create staging directories
+        run: mkdir -p staging work
+
+      # ---------------- potrace ----------------
+      - name: "potrace: fetch source (+ archive corresponding source, GPL)"
+        if: needs.check-versions.outputs.potrace == 'true'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          VER="${POTRACE_VERSION}"
+          curl -fL --retry 3 -o "work/potrace-${VER}.tar.gz" \
+            "https://potrace.sourceforge.net/download/${VER}/potrace-${VER}.tar.gz"
+          # Corresponding source for the GPL binaries below. Published ONCE
+          # (linux-x86_64 leg) so the flatten step does not race two copies.
+          if [ "${{ matrix.platform }}-${{ matrix.arch }}" = "linux-x86_64" ]; then
+            cp "work/potrace-${VER}.tar.gz" "staging/potrace-${VER}.src.tar.gz"
+          fi
+
+      - name: "potrace: Linux ${{ matrix.arch }} (compile from source)"
+        if: needs.check-versions.outputs.potrace == 'true' && matrix.platform == 'linux'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          VER="${POTRACE_VERSION}"
+          rm -rf work/potrace-build && mkdir -p work/potrace-build
+          tar -xzf "work/potrace-${VER}.tar.gz" -C work/potrace-build --strip-components=1
+          cd work/potrace-build
+          ./configure CFLAGS='-O2'
+          make -j"$(nproc)"
+          strip src/potrace
+          cd ../..
+          mkdir -p work/pkg
+          cp work/potrace-build/src/potrace work/pkg/potrace
+          cp work/potrace-build/COPYING   work/pkg/COPYING
+          chmod +x work/pkg/potrace
+          work/pkg/potrace --version | head -1 | grep -q "${VER}"
+          tar -czf "staging/potrace-linux-${{ matrix.arch }}.tar.gz" -C work/pkg potrace COPYING
+          rm -rf work/pkg work/potrace-build
+          echo "✓ potrace-linux-${{ matrix.arch }}.tar.gz"
+
+      - name: "potrace: macOS arm64 + x86_64 (compile from source, two thin binaries)"
+        if: needs.check-versions.outputs.potrace == 'true' && matrix.platform == 'macos'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          VER="${POTRACE_VERSION}"
+          # potrace 1.16 (2019) ships a config.sub/config.guess that predate
+          # Apple Silicon; regenerate them (autoreconf -fi copies fresh ones).
+          brew install autoconf automake libtool >/dev/null
+          build_arch() {   # $1 clang arch (arm64|x86_64)   $2 asset arch (aarch64|x86_64)   $3 --host or ""
+            local carch="$1" aarch="$2" host="$3"
+            rm -rf "work/potrace-${carch}" && mkdir -p "work/potrace-${carch}"
+            tar -xzf "work/potrace-${VER}.tar.gz" -C "work/potrace-${carch}" --strip-components=1
+            ( cd "work/potrace-${carch}" \
+              && autoreconf -fi \
+              && ./configure ${host} CC="clang -arch ${carch}" CFLAGS='-O2 -mmacosx-version-min=13.0' \
+              && make -j"$(sysctl -n hw.ncpu)" \
+              && strip src/potrace )
+            lipo -archs "work/potrace-${carch}/src/potrace" | grep -q "${carch}"
+            mkdir -p work/pkg
+            cp "work/potrace-${carch}/src/potrace" work/pkg/potrace
+            cp "work/potrace-${carch}/COPYING"     work/pkg/COPYING
+            chmod +x work/pkg/potrace
+            tar -czf "staging/potrace-macos-${aarch}.tar.gz" -C work/pkg potrace COPYING
+            rm -rf work/pkg
+            echo "✓ potrace-macos-${aarch}.tar.gz"
+          }
+          build_arch arm64  aarch64 ""
+          build_arch x86_64 x86_64  "--host=x86_64-apple-darwin"
+          # Only the host-arch binary is runnable here; smoke it.
+          "work/potrace-arm64/src/potrace" --version | head -1 | grep -q "${VER}"
+
+      # ---------------- vtracer ----------------
+      - name: "vtracer: fetch pinned source"
+        if: needs.check-versions.outputs.vtracer == 'true'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          VER="${VTRACER_VERSION}"
+          curl -fL --retry 3 -o "work/vtracer-${VER}.tar.gz" \
+            "https://github.com/visioncortex/vtracer/archive/refs/tags/${VER}.tar.gz"
+          # Not a GPL obligation (MIT OR Apache-2.0) — archived for the same
+          # provenance reason as every other from-source build here.
+          if [ "${{ matrix.platform }}-${{ matrix.arch }}" = "linux-x86_64" ]; then
+            cp "work/vtracer-${VER}.tar.gz" "staging/vtracer-${VER}.src.tar.gz"
+          fi
+          rm -rf work/vtracer-src && mkdir -p work/vtracer-src
+          tar -xzf "work/vtracer-${VER}.tar.gz" -C work/vtracer-src --strip-components=1
+          rustup update stable >/dev/null && rustup default stable
+          rustc --version   # edition 2024 crate → needs rustc >= 1.85
+
+      - name: "vtracer: Linux ${{ matrix.arch }} (cargo, static musl)"
+        if: needs.check-versions.outputs.vtracer == 'true' && matrix.platform == 'linux'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          VER="${VTRACER_VERSION}"
+          case "${{ matrix.arch }}" in
+            x86_64)  TARGET=x86_64-unknown-linux-musl ;;
+            aarch64) TARGET=aarch64-unknown-linux-musl ;;
+          esac
+          sudo apt-get install -y musl-tools
+          rustup target add "${TARGET}"
+          ( cd work/vtracer-src && cargo build --release --locked -p vtracer-cli --target "${TARGET}" )
+          mkdir -p work/pkg
+          cp "work/vtracer-src/target/${TARGET}/release/vtracer" work/pkg/vtracer
+          cp work/vtracer-src/LICENSE work/pkg/LICENSE
+          strip work/pkg/vtracer && chmod +x work/pkg/vtracer
+          # Flag tripwire: MeedyaConverter's builder depends on exactly these.
+          HELP="$(work/pkg/vtracer --help)"
+          for f in --input --output --mode --filter-speckle --color-precision --gradient-step --max-colors --clustering; do
+            echo "$HELP" | grep -q -- "$f" || { echo "::error::vtracer ${VER} --help lacks ${f}"; exit 1; }
+          done
+          tar -czf "staging/vtracer-linux-${{ matrix.arch }}.tar.gz" -C work/pkg vtracer LICENSE
+          rm -rf work/pkg
+          echo "✓ vtracer-linux-${{ matrix.arch }}.tar.gz"
+
+      - name: "vtracer: macOS arm64 + x86_64 (cargo, two thin binaries)"
+        if: needs.check-versions.outputs.vtracer == 'true' && matrix.platform == 'macos'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          VER="${VTRACER_VERSION}"
+          rustup target add x86_64-apple-darwin
+          build_target() {   # $1 rust target   $2 asset arch
+            local target="$1" aarch="$2"
+            ( cd work/vtracer-src && cargo build --release --locked -p vtracer-cli --target "${target}" )
+            mkdir -p work/pkg
+            cp "work/vtracer-src/target/${target}/release/vtracer" work/pkg/vtracer
+            cp work/vtracer-src/LICENSE work/pkg/LICENSE
+            strip work/pkg/vtracer && chmod +x work/pkg/vtracer
+            tar -czf "staging/vtracer-macos-${aarch}.tar.gz" -C work/pkg vtracer LICENSE
+            rm -rf work/pkg
+            echo "✓ vtracer-macos-${aarch}.tar.gz"
+          }
+          build_target aarch64-apple-darwin aarch64
+          build_target x86_64-apple-darwin  x86_64
+          HELP="$(work/vtracer-src/target/aarch64-apple-darwin/release/vtracer --help)"
+          for f in --input --output --mode --filter-speckle --color-precision --gradient-step --max-colors --clustering; do
+            echo "$HELP" | grep -q -- "$f" || { echo "::error::vtracer ${VER} --help lacks ${f}"; exit 1; }
+          done
+
+      - name: List produced assets
+        run: ls -lh staging/ 2>/dev/null || echo "No assets produced"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: tracing-tools-${{ matrix.platform }}-${{ matrix.arch }}
+          path: staging/
+          retention-days: 1
+          if-no-files-found: warn
+
+  # =====================================================================
   # Job 3: Upload all assets to GitHub Releases
   # Creates a date-stamped release (e.g. 2026-02-25) and updates the
   # "latest" tag to always point at the newest release.
@@ -1415,7 +1626,7 @@ jobs:
   # assets from the previous 'latest' release to ensure complete releases.
   # =====================================================================
   upload-release:
-    needs: [check-versions, download-binaries, build-python-tools]
+    needs: [check-versions, download-binaries, build-python-tools, build-tracing-tools]
     runs-on: ubuntu-latest
     # Only upload on push/schedule/dispatch (not PRs), and only if something changed
     if: >-
@@ -1424,7 +1635,8 @@ jobs:
       needs.check-versions.outputs.any_changed == 'true' &&
       (needs.download-binaries.result == 'success' || needs.download-binaries.result == 'skipped') &&
       (needs.build-python-tools.result == 'success' || needs.build-python-tools.result == 'skipped') &&
-      (needs.download-binaries.result == 'success' || needs.build-python-tools.result == 'success')
+      (needs.build-tracing-tools.result == 'success' || needs.build-tracing-tools.result == 'skipped') &&
+      (needs.download-binaries.result == 'success' || needs.build-python-tools.result == 'success' || needs.build-tracing-tools.result == 'success')
     steps:
       - uses: actions/checkout@v7
 
@@ -1453,7 +1665,8 @@ jobs:
         run: |
           mkdir -p staging
           # New artifacts overwrite carried-forward ones
-          find all-assets -type f \( -name "*.tar.gz" -o -name "*.zip" -o -name "*.exe" \) \
+          find all-assets -type f \( -name "*.tar.gz" -o -name "*.tar.xz" -o -name "*.tar.lz" \
+                                     -o -name "*.tar.bz2" -o -name "*.zip" -o -name "*.exe" \) \
             -exec cp {} staging/ \; 2>/dev/null || true
           # Remove the updated-versions artifact if it landed here
           rm -f staging/versions-new.json

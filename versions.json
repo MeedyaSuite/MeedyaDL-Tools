@@ -15,5 +15,7 @@
   "gytmdl": "2.1.6",
   "gamdl": "3.8.5",
   "ofscraper": "3.14.7",
-  "mkvtoolnix": "101.0"
+  "mkvtoolnix": "101.0",
+  "potrace": "1.16",
+  "vtracer": "1.0.0-alpha.4"
 }
