@@ -81,7 +81,7 @@ tools this is their corresponding source.
 
 `mkvtoolnix-linux-x86_64.tar.gz` is taken from the official AppImage. Its
 programs only work next to the libraries the AppImage carries (Qt, Boost,
-FLAC, …), so the tarball ships them together:
+FLAC, ICU, GLib, GnuTLS, …), so the tarball ships them together:
 
 ```text
 mkvmerge  mkvextract  mkvpropedit  mkvinfo   ← small launcher scripts — run these
@@ -91,7 +91,8 @@ lib/                                         ← libraries copied from the AppIm
 
 Run the tools from the top level (or through a symlink to them); keep `lib/`
 and `libexec/` next to them. The host only needs glibc, the C++/GCC runtime
-(`libstdc++`, `libgcc_s`) and zlib, which every desktop Linux has. Each build
+(`libstdc++`, `libgcc_s`), zlib and GMP (`libgmp.so.10`), which every desktop
+Linux has — the official AppImage expects the same. Each build
 is checked by running `--version` from a fresh unpack before it is published.
 
 ## Releases

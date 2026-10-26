@@ -38,9 +38,15 @@ Last updated: 2026-10-26 (MKVToolNix Linux packaging fix)
   - New step stopped with `::error::` and produced no asset (as designed):
     `libgmp.so.10` is **not inside the AppImage** — upstream expects the host to
     provide it. The job still showed green because of `continue-on-error`.
-  - The step now lists every such library at once (and what it bundled) so
-    the full list is visible in one run. Next: decide whether those are
-    host-provided (like upstream's AppImage assumes) or must be shipped.
+  - The step now lists every such library at once (and what it bundled).
+- **CI run 2 (run 40333164882, commit 3380cd2):** bundled 22 libraries
+  (FLAC, Qt6Core, Boost atomic + filesystem, cmark, libdvdread, libffi, GLib +
+  gthread, GnuTLS, Nettle/hogweed, ICU data/i18n/uc 56, libidn2, Ogg,
+  p11-kit, PCRE, libtasn1, libunistring, Vorbis). Only `libgmp.so.10` is left
+  to the host. Decision: treat GMP as host-provided, like the upstream
+  AppImage does (added to `HOST_LIBS`, README + LICENSE.md updated with the
+  real bundled list). Copying the runner's Ubuntu GMP was rejected: it mixes
+  non-upstream builds into the tarball.
 - **Overlap with PR #28** (open, also targets `alpha`): it changes the same
   Linux step's "no binaries" branch to `::error::` + `exit 1`. Whichever PR
   merges second takes this branch's version of that step.
@@ -97,7 +103,7 @@ Last updated: 2026-10-26 (MKVToolNix Linux packaging fix)
 | 4 | GPL disc tools: macOS builds (reuse the `build-tracing-tools` macOS pattern) | ⏳ Not started |
 | 5 | Thorough documentation pass (CHANGELOG history still says "monthly schedule") | ⏳ Not started |
 | 6 | Device-wide AI fallback rule on the owner's own machines (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`) | ❓ Owner to do locally |
-| 7 | MKVToolNix Linux asset: bundle libraries + launchers, clean-unpack smoke test (branch `claude/kind-goodall-ygobby`) | ⏳ CI run 1 read; finding the full list of host libraries |
+| 7 | MKVToolNix Linux asset: bundle libraries + launchers, clean-unpack smoke test (branch `claude/kind-goodall-ygobby`) | ⏳ GMP made host-provided; waiting on CI run 3 to confirm `v103.0` from a clean unpack |
 
 Open issues: #19 (publish SHA256SUMS — done on `main` by PR #20, could be
 closed), #17 (add rclone), #16 (MeedyaSuite org secrets), #8 (automatic

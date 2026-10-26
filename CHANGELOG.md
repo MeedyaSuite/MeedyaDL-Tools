@@ -24,7 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **.gitattributes**: Collapse .claude/ in GitHub UI, normalize line endings
 
 ### Fixed
-- **MKVToolNix Linux x86_64**: the asset shipped only the four programs, which need libraries from inside the AppImage (Qt, Boost, FLAC, cmark, libdvdread, GMP, Vorbis/Ogg) and failed with "error while loading shared libraries" anywhere else. It now ships the unmodified programs in `libexec/`, the libraries they load in `lib/`, and launcher scripts at the root. Every build is checked from a clean unpack (`--version` must report the expected version and every library must come from `lib/` or the host's glibc/libstdc++/libgcc_s/zlib); a failed check reports an `::error::` and publishes no asset
+- **MKVToolNix Linux x86_64**: the asset shipped only the four programs, which need libraries from inside the AppImage (Qt, Boost, FLAC, cmark, libdvdread, GMP, Vorbis/Ogg) and failed with "error while loading shared libraries" anywhere else. It now ships the unmodified programs in `libexec/`, the libraries they load in `lib/`, and launcher scripts at the root. Every build is checked from a clean unpack (`--version` must report the expected version and every library must come from `lib/` or the host's glibc/libstdc++/libgcc_s/zlib/GMP — the same host libraries the official AppImage expects); a failed check reports an `::error::` and publishes no asset
 
 ### Changed
 - **CI schedule**: daily (06:00 UTC) smart rebuild — only tools whose upstream version changed are rebuilt

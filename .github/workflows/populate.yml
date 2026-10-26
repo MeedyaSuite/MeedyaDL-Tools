@@ -1222,9 +1222,11 @@ jobs:
           VER="${{ steps.mkvtoolnix_meta.outputs.version }}"
           ASSET="mkvtoolnix-linux-x86_64.tar.gz"
           TOOLS="mkvmerge mkvextract mkvpropedit mkvinfo"
-          # Provided by every Linux host: glibc, the C++/GCC runtimes and zlib.
-          # Never bundled (a bundled glibc would clash with the host's loader).
-          HOST_LIBS='^(linux-vdso|ld-linux-x86-64|libc|libm|libpthread|libdl|librt|libresolv|libutil|libstdc\+\+|libgcc_s|libz)\.so'
+          # Provided by every Linux host: glibc, the C++/GCC runtimes, zlib and
+          # GMP (the upstream AppImage does not bundle GMP either — it expects
+          # the host to have it). Never bundled: a bundled glibc would clash
+          # with the host's loader.
+          HOST_LIBS='^(linux-vdso|ld-linux-x86-64|libc|libm|libpthread|libdl|librt|libresolv|libutil|libstdc\+\+|libgcc_s|libz|libgmp)\.so'
           FAILED=""
           ERR_LINE=""
           fail() {
