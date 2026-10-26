@@ -77,6 +77,23 @@ exact source they were built from as `{tool_id}-{version}.src.{tar.gz,tar.lz}`
 (e.g. `potrace-1.16.src.tar.gz`, `ddrescue-1.28.src.tar.lz`) — for the GPL
 tools this is their corresponding source.
 
+### MKVToolNix on Linux
+
+`mkvtoolnix-linux-x86_64.tar.gz` is taken from the official AppImage. Its
+programs only work next to the libraries the AppImage carries (Qt, Boost,
+FLAC, …), so the tarball ships them together:
+
+```text
+mkvmerge  mkvextract  mkvpropedit  mkvinfo   ← small launcher scripts — run these
+libexec/                                     ← the unmodified upstream programs
+lib/                                         ← libraries copied from the AppImage
+```
+
+Run the tools from the top level (or through a symlink to them); keep `lib/`
+and `libexec/` next to them. The host only needs glibc, the C++/GCC runtime
+(`libstdc++`, `libgcc_s`) and zlib, which every desktop Linux has. Each build
+is checked by running `--version` from a fresh unpack before it is published.
+
 ## Releases
 
 Each build creates a **date-stamped release** (e.g. `2026-02-25`) containing all tool binaries. The `latest` tag always points to the most recent build.

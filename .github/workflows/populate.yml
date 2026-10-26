@@ -1214,35 +1214,164 @@ jobs:
           echo "version=$VER" >> "$GITHUB_OUTPUT"
           echo "→ MKVToolNix latest: $VER"
 
+      # Temporary: proves the asset currently on the `latest` release fails
+      # outside the AppImage. Remove once the fix below has been confirmed.
+      - name: "MKVToolNix: Linux x86_64 — check current release asset (temporary)"
+        if: needs.check-versions.outputs.mkvtoolnix == 'true'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          D=$(mktemp -d)
+          echo "→ Downloading current latest/mkvtoolnix-linux-x86_64.tar.gz"
+          curl -fL --retry 3 -o "$D/old.tar.gz" \
+            "https://github.com/${{ github.repository }}/releases/download/latest/mkvtoolnix-linux-x86_64.tar.gz"
+          mkdir "$D/x"
+          tar -xzf "$D/old.tar.gz" -C "$D/x"
+          echo "→ Contents:"
+          (cd "$D/x" && ls -la)
+          RC=0
+          OUT=$(cd "$D/x" && ./mkvmerge --version 2>&1) || RC=$?
+          echo "→ ./mkvmerge --version (exit ${RC}): ${OUT}"
+          if [ "$RC" -ne 0 ]; then
+            echo "⚠ Current release asset is broken outside the AppImage (exit ${RC})"
+            echo "→ Libraries the host cannot find:"
+            ldd "$D/x/mkvmerge" | grep 'not found' || true
+          else
+            echo "✓ Current release asset runs"
+          fi
+          rm -rf "$D"
+
       - name: "MKVToolNix: Linux x86_64 (AppImage)"
         if: needs.check-versions.outputs.mkvtoolnix == 'true'
         continue-on-error: true
         run: |
           set -euo pipefail
           VER="${{ steps.mkvtoolnix_meta.outputs.version }}"
-          echo "→ Downloading MKVToolNix AppImage"
+          ASSET="mkvtoolnix-linux-x86_64.tar.gz"
+          TOOLS="mkvmerge mkvextract mkvpropedit mkvinfo"
+          # Provided by every Linux host: glibc, the C++/GCC runtimes and zlib.
+          # Never bundled (a bundled glibc would clash with the host's loader).
+          HOST_LIBS='^(linux-vdso|ld-linux-x86-64|libc|libm|libpthread|libdl|librt|libresolv|libutil|libstdc\+\+|libgcc_s|libz)\.so'
+          FAILED=""
+          ERR_LINE=""
+          fail() {
+            FAILED=1
+            echo "::error title=MKVToolNix Linux x86_64::$1 — ${ASSET} not produced"
+            echo "⚠ MKVToolNix Linux x86_64: $1" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          }
+          # Never leave an unverified asset behind, and never exit non-zero
+          # without an ::error:: annotation (set -e exits are caught here).
+          cleanup() {
+            local rc=$?
+            if [ "$rc" -ne 0 ]; then
+              rm -f "staging/${ASSET}"
+              if [ -z "$FAILED" ]; then
+                echo "::error title=MKVToolNix Linux x86_64::step failed (exit ${rc}${ERR_LINE:+, line ${ERR_LINE}}) — ${ASSET} not produced"
+              fi
+            fi
+            rm -rf work/appimage_extract work/pkg work/smoke work/mkvtoolnix.AppImage
+          }
+          trap 'ERR_LINE=$LINENO' ERR
+          trap cleanup EXIT
+          [ -n "$VER" ] || fail "could not detect the latest MKVToolNix version"
+
+          echo "→ Downloading MKVToolNix AppImage ${VER}"
           curl -fL --retry 3 -o work/mkvtoolnix.AppImage \
             "https://mkvtoolnix.download/appimage/MKVToolNix_GUI-${VER}-x86_64.AppImage"
           chmod +x work/mkvtoolnix.AppImage
-          # Extract CLI tools from AppImage
           mkdir -p work/appimage_extract
-          cd work/appimage_extract
-          ../mkvtoolnix.AppImage --appimage-extract > /dev/null 2>&1
-          cd ../..
-          mkdir -p work/pkg
-          for bin in mkvmerge mkvextract mkvpropedit mkvinfo; do
-            BIN_PATH=$(find work/appimage_extract -name "$bin" -type f | head -1)
-            if [ -n "$BIN_PATH" ]; then
-              cp "$BIN_PATH" "work/pkg/$bin" && chmod +x "work/pkg/$bin"
-            fi
+          (cd work/appimage_extract && ../mkvtoolnix.AppImage --appimage-extract > /dev/null 2>&1) \
+            || fail "could not extract the AppImage"
+          ROOT="$PWD/work/appimage_extract/squashfs-root"
+          [ -d "$ROOT" ] || fail "AppImage extracted, but squashfs-root is missing"
+
+          # The upstream binaries carry an RPATH to the build machine's Qt
+          # and load the rest from the AppImage's own usr/lib, so they only
+          # run inside the AppImage. Ship them unmodified in libexec/, the
+          # libraries they need in lib/, and small launchers at the root
+          # (where MeedyaDL looks for them) that point the loader at lib/.
+          PKG="$PWD/work/pkg"
+          mkdir -p "$PKG/libexec" "$PKG/lib"
+          LIBDIRS="$ROOT/usr/lib:$(find "$ROOT" -type f -name '*.so*' -printf '%h\n' | sort -u | paste -sd:)"
+          for bin in $TOOLS; do
+            BIN_PATH="$ROOT/usr/bin/$bin"
+            [ -f "$BIN_PATH" ] || BIN_PATH=$(find "$ROOT" -type f -name "$bin" | head -1)
+            [ -n "$BIN_PATH" ] && [ -f "$BIN_PATH" ] || fail "$bin not found in the AppImage"
+            cp -p "$BIN_PATH" "$PKG/libexec/$bin"
+            chmod +x "$PKG/libexec/$bin"
+            echo "→ Found $bin (${BIN_PATH#"$ROOT"/})"
+            # ldd lists every library loaded, direct and indirect.
+            LDD=$(LD_LIBRARY_PATH="$LIBDIRS" ldd "$BIN_PATH") || fail "ldd failed on $bin"
+            MISSING=$(printf '%s\n' "$LDD" | awk '/not found/ { print $1 }' | paste -sd' ')
+            [ -z "$MISSING" ] || fail "$bin needs libraries missing from the AppImage: ${MISSING}"
+            while read -r soname path; do
+              case "$path" in
+                "$ROOT"/*)
+                  if printf '%s\n' "$soname" | grep -qE "$HOST_LIBS"; then continue; fi
+                  [ -f "$PKG/lib/$soname" ] || cp -L "$path" "$PKG/lib/$soname"
+                  ;;
+                *)
+                  printf '%s\n' "$soname" | grep -qE "$HOST_LIBS" \
+                    || fail "$bin loads $soname from the runner ($path), not the AppImage — it would be missing on user machines"
+                  ;;
+              esac
+            done < <(printf '%s\n' "$LDD" | awk '$2 == "=>" && $3 ~ /^\// { print $1, $3 }')
           done
-          if [ "$(ls work/pkg/ | wc -l)" -gt 0 ]; then
-            tar -czf staging/mkvtoolnix-linux-x86_64.tar.gz -C work/pkg .
-            echo "✓ mkvtoolnix-linux-x86_64.tar.gz"
-          else
-            echo "⚠ No MKVToolNix binaries found in AppImage"
-          fi
-          rm -rf work/appimage_extract work/pkg work/mkvtoolnix.AppImage
+          find "$PKG/lib" -type f -exec chmod 644 {} +
+
+          for bin in $TOOLS; do
+            printf '%s\n' '#!/bin/sh' \
+              "# MeedyaDL-Tools launcher: runs the unmodified upstream ${bin}" \
+              '# from libexec/ with the libraries bundled in lib/.' \
+              'HERE=$(dirname -- "$(readlink -f -- "$0")")' \
+              'LD_LIBRARY_PATH="$HERE/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"' \
+              'export LD_LIBRARY_PATH' \
+              "exec \"\$HERE/libexec/${bin}\" \"\$@\"" > "$PKG/$bin"
+            chmod 755 "$PKG/$bin"
+          done
+
+          echo "→ Packaged files:"
+          (cd "$PKG" && find . -type f | sort)
+          REQ_GLIBC=$(find "$PKG/libexec" "$PKG/lib" -type f -exec objdump -T {} + 2> /dev/null \
+            | grep -oE 'GLIBC_[0-9.]+' | sort -uV | tail -1) || true
+          REQ_CXX=$(find "$PKG/libexec" "$PKG/lib" -type f -exec objdump -T {} + 2> /dev/null \
+            | grep -oE 'GLIBCXX_[0-9.]+' | sort -uV | tail -1) || true
+          echo "→ Host requirement: ${REQ_GLIBC:-GLIBC unknown}, ${REQ_CXX:-GLIBCXX unknown}"
+          tar -czf "staging/${ASSET}" -C "$PKG" .
+
+          # Smoke test from a clean unpack, so a missing library fails here
+          # rather than on a user's machine.
+          mkdir -p work/smoke
+          tar -xzf "staging/${ASSET}" -C work/smoke
+          SMOKE="$PWD/work/smoke"
+          for bin in $TOOLS; do
+            [ -x "$SMOKE/$bin" ] && [ -f "$SMOKE/libexec/$bin" ] \
+              || fail "$bin is not at the root of the unpacked tarball"
+            # Every library must come from lib/ or from the host-provided set.
+            LDD=$(LD_LIBRARY_PATH="$SMOKE/lib" ldd "$SMOKE/libexec/$bin") \
+              || fail "ldd failed on $bin from a clean unpack"
+            while read -r soname path; do
+              case "$path" in
+                "$SMOKE"/lib/*) ;;
+                not) fail "$bin from a clean unpack cannot find $soname" ;;
+                *) printf '%s\n' "$soname" | grep -qE "$HOST_LIBS" \
+                     || fail "$bin from a clean unpack loads $soname from the runner ($path)" ;;
+              esac
+            done < <(printf '%s\n' "$LDD" | awk '$2 == "=>" { print $1, $3 }')
+            OUT=$(cd "$SMOKE" && env -u LD_LIBRARY_PATH "./$bin" --version 2>&1) \
+              || fail "$bin --version failed from a clean unpack: ${OUT}"
+            printf '%s\n' "$OUT" | grep -qF "v${VER}" \
+              || fail "$bin reports '${OUT}', expected v${VER}"
+            echo "→ ${OUT}"
+          done
+          # Launchers must also work when called through a symlink elsewhere.
+          LINK_DIR=$(mktemp -d)
+          ln -s "$SMOKE/mkvmerge" "$LINK_DIR/mkvmerge"
+          OUT=$(cd / && env -u LD_LIBRARY_PATH "$LINK_DIR/mkvmerge" --version 2>&1) \
+            || fail "mkvmerge called through a symlink failed: ${OUT}"
+          rm -rf "$LINK_DIR"
+          echo "✓ ${ASSET} (${REQ_GLIBC:-?}, ${REQ_CXX:-?})"
 
       - name: "MKVToolNix: Windows x86_64"
         if: needs.check-versions.outputs.mkvtoolnix == 'true'

@@ -66,7 +66,7 @@ Current build status and tool availability for MeedyaDL-Tools.
 | **FFmpeg (macOS)** | arm64 from osxexperts.net; x86_64 from ffmpeg.martin-riedl.de (evermeet.cx, the previous source, returns 410 Gone since 2026-10-13). ffmpeg/ffprobe failures fail the build; ffplay is optional |
 | **MP4Box** | Extracted from platform-specific installers (.deb, .exe, .pkg) |
 | **MediaInfo** | Binaries from mediaarea.net (not GitHub releases); macOS DMG extracted via 7z |
-| **MKVToolNix** | Binaries from mkvtoolnix.download; Linux via AppImage extraction; macOS x86_64 only (Rosetta); macOS support ending H2 2026 |
+| **MKVToolNix** | Binaries from mkvtoolnix.download; Linux via AppImage extraction — the unmodified programs go in `libexec/` with the AppImage's libraries in `lib/` and launcher scripts at the root, and `--version` is run from a clean unpack before the asset is kept (before 2026-10-26 the Linux asset shipped the programs alone and could not start outside the AppImage); macOS x86_64 only (Rosetta); macOS support ending H2 2026 |
 | **potrace/vtracer (macOS)** | Compiled on `macos-latest`; x86_64 cross-built from the arm64 host; two thin assets, lipo'd by the consumer |
 
 ## Version Tracking

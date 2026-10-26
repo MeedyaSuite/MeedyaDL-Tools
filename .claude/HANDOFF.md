@@ -3,11 +3,40 @@
 **Read this first in any new session.** Then read
 [`STANDING_RULES.md`](STANDING_RULES.md) and [`CLAUDE.md`](CLAUDE.md).
 
-Last updated: 2026-10-26 (branch consolidation)
+Last updated: 2026-10-26 (MKVToolNix Linux packaging fix)
 
 ---
 
-## Where we are right now
+## Current task — MKVToolNix Linux asset (branch `claude/kind-goodall-ygobby`)
+
+- **Problem:** `mkvtoolnix-linux-x86_64.tar.gz` held only the four programs
+  copied out of the AppImage. They need Qt 6, Boost, FLAC, cmark, libdvdread,
+  GMP, Vorbis/Ogg from inside the AppImage (plus an RPATH pointing at the
+  upstream build machine), so they fail with "error while loading shared
+  libraries". Reproduced locally on Ubuntu 24.04 with the current `latest`
+  asset: `./mkvmerge --version` → exit 127, `libboost_filesystem.so.1.85.0`
+  missing.
+- **MeedyaDL check:** MeedyaDL (`main`, `alpha`, `work-in-progress`) does not
+  use MKVToolNix yet. Its mirror installer unpacks a tarball into
+  `tools/<tool_id>/` and expects programs at the top level, so the top level
+  must keep `mkvmerge` etc.
+- **Fix (in `download-binaries`, step "MKVToolNix: Linux x86_64 (AppImage)"):**
+  the unmodified programs go in `libexec/`, every library `ldd` says they load
+  from the AppImage goes in `lib/` (glibc, libstdc++, libgcc_s and zlib are left
+  to the host), and a small `/bin/sh` launcher at the top level sets
+  `LD_LIBRARY_PATH` and runs the real program. No `patchelf`, so LICENSE.md's
+  "unmodified" wording still holds (a note about the bundled libraries was
+  added). The tarball is unpacked fresh and checked: every library must come
+  from `lib/` or the host set, and `--version` must report `v<ver>` (also via a
+  symlink). Any failure → `::error::`, run-summary line, no asset (EXIT trap),
+  `continue-on-error` kept — same pattern as the macOS job in PR #28.
+- **Temporary step** "MKVToolNix: Linux x86_64 — check current release asset
+  (temporary)" runs the *old* `latest` asset on CI to confirm the failure.
+  Remove it once its log has been read.
+- **Overlap with PR #28** (open, also targets `alpha`): it changes the same
+  Linux step's "no binaries" branch to `::error::` + `exit 1`. Whichever PR
+  merges second takes this branch's version of that step.
+- **Status:** see the task queue row 7 below.
 
 - **Working branch:** `claude/nifty-shannon-wla302`, started from `main` at
   `18e4eb3` (2026-10-25). It is the **single** work-in-progress branch and
@@ -60,6 +89,7 @@ Last updated: 2026-10-26 (branch consolidation)
 | 4 | GPL disc tools: macOS builds (reuse the `build-tracing-tools` macOS pattern) | ⏳ Not started |
 | 5 | Thorough documentation pass (CHANGELOG history still says "monthly schedule") | ⏳ Not started |
 | 6 | Device-wide AI fallback rule on the owner's own machines (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`) | ❓ Owner to do locally |
+| 7 | MKVToolNix Linux asset: bundle libraries + launchers, clean-unpack smoke test (branch `claude/kind-goodall-ygobby`) | ⏳ Built, waiting on CI |
 
 Open issues: #19 (publish SHA256SUMS — done on `main` by PR #20, could be
 closed), #17 (add rclone), #16 (MeedyaSuite org secrets), #8 (automatic

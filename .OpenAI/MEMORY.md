@@ -14,3 +14,7 @@ Short-lived notes for Codex. The authoritative state is always
   `claude/nifty-shannon-wla302` and deleted. `alpha` created from `main`.
   Workflow changes from that merge (potrace/vtracer/ddrescue builds, macOS
   ffmpeg hard-fail, ddrescue version gating) are ready for a Codex review.
+- 2026-10-26: Branch `claude/kind-goodall-ygobby` (from `alpha`): MKVToolNix
+  Linux asset now ships `libexec/` (unmodified programs) + `lib/` (AppImage
+  libraries) + root launcher scripts, with a clean-unpack smoke test. Ready for
+  a Codex review of the "MKVToolNix: Linux x86_64 (AppImage)" step.
