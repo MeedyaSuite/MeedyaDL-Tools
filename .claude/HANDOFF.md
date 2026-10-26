@@ -47,6 +47,10 @@ Last updated: 2026-10-26 (MKVToolNix Linux packaging fix)
   AppImage does (added to `HOST_LIBS`, README + LICENSE.md updated with the
   real bundled list). Copying the runner's Ubuntu GMP was rejected: it mixes
   non-upstream builds into the tarball.
+- **CI run 3 (run 40334308316, commit 12e2736):** passed. From a clean
+  unpack all four tools print `v103.0 ('The Darkness') 64-bit`, also through
+  a symlink. Tarball 24 MB; needs glibc ≥ 2.28 and GLIBCXX_3.4.21 (README +
+  DEV_Status updated).
 - **Overlap with PR #28** (open, also targets `alpha`): it changes the same
   Linux step's "no binaries" branch to `::error::` + `exit 1`. Whichever PR
   merges second takes this branch's version of that step.
@@ -103,7 +107,7 @@ Last updated: 2026-10-26 (MKVToolNix Linux packaging fix)
 | 4 | GPL disc tools: macOS builds (reuse the `build-tracing-tools` macOS pattern) | ⏳ Not started |
 | 5 | Thorough documentation pass (CHANGELOG history still says "monthly schedule") | ⏳ Not started |
 | 6 | Device-wide AI fallback rule on the owner's own machines (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`) | ❓ Owner to do locally |
-| 7 | MKVToolNix Linux asset: bundle libraries + launchers, clean-unpack smoke test (branch `claude/kind-goodall-ygobby`) | ⏳ GMP made host-provided; waiting on CI run 3 to confirm `v103.0` from a clean unpack |
+| 7 | MKVToolNix Linux asset: bundle libraries + launchers, clean-unpack smoke test (branch `claude/kind-goodall-ygobby`) | ✅ Done on CI (run 3); PR #29 waiting on review/merge |
 
 Open issues: #19 (publish SHA256SUMS — done on `main` by PR #20, could be
 closed), #17 (add rclone), #16 (MeedyaSuite org secrets), #8 (automatic

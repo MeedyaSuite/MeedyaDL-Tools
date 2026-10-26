@@ -92,7 +92,8 @@ lib/                                         ← libraries copied from the AppIm
 Run the tools from the top level (or through a symlink to them); keep `lib/`
 and `libexec/` next to them. The host only needs glibc, the C++/GCC runtime
 (`libstdc++`, `libgcc_s`), zlib and GMP (`libgmp.so.10`), which every desktop
-Linux has — the official AppImage expects the same. Each build
+Linux has — the official AppImage expects the same. glibc must be 2.28 or
+newer (Debian 10, Ubuntu 18.10, RHEL 8 and later). Each build
 is checked by running `--version` from a fresh unpack before it is published.
 
 ## Releases
