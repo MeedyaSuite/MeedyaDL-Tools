@@ -30,9 +30,17 @@ Last updated: 2026-10-26 (MKVToolNix Linux packaging fix)
   from `lib/` or the host set, and `--version` must report `v<ver>` (also via a
   symlink). Any failure → `::error::`, run-summary line, no asset (EXIT trap),
   `continue-on-error` kept — same pattern as the macOS job in PR #28.
-- **Temporary step** "MKVToolNix: Linux x86_64 — check current release asset
-  (temporary)" runs the *old* `latest` asset on CI to confirm the failure.
-  Remove it once its log has been read.
+- **CI run 1 (run 40331555265, commit e262668):**
+  - Old `latest` asset on `ubuntu-latest`: `./mkvmerge --version` → exit 127;
+    `libboost_filesystem.so.1.85.0`, `libFLAC.so.8`, `libQt6Core.so.6`,
+    `libcmark.so.0.28.3`, `libdvdread.so.4` not found. Original bug confirmed.
+    The temporary check step has now been removed.
+  - New step stopped with `::error::` and produced no asset (as designed):
+    `libgmp.so.10` is **not inside the AppImage** — upstream expects the host to
+    provide it. The job still showed green because of `continue-on-error`.
+  - The step now lists every such library at once (and what it bundled) so
+    the full list is visible in one run. Next: decide whether those are
+    host-provided (like upstream's AppImage assumes) or must be shipped.
 - **Overlap with PR #28** (open, also targets `alpha`): it changes the same
   Linux step's "no binaries" branch to `::error::` + `exit 1`. Whichever PR
   merges second takes this branch's version of that step.
@@ -89,7 +97,7 @@ Last updated: 2026-10-26 (MKVToolNix Linux packaging fix)
 | 4 | GPL disc tools: macOS builds (reuse the `build-tracing-tools` macOS pattern) | ⏳ Not started |
 | 5 | Thorough documentation pass (CHANGELOG history still says "monthly schedule") | ⏳ Not started |
 | 6 | Device-wide AI fallback rule on the owner's own machines (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`) | ❓ Owner to do locally |
-| 7 | MKVToolNix Linux asset: bundle libraries + launchers, clean-unpack smoke test (branch `claude/kind-goodall-ygobby`) | ⏳ Built, waiting on CI |
+| 7 | MKVToolNix Linux asset: bundle libraries + launchers, clean-unpack smoke test (branch `claude/kind-goodall-ygobby`) | ⏳ CI run 1 read; finding the full list of host libraries |
 
 Open issues: #19 (publish SHA256SUMS — done on `main` by PR #20, could be
 closed), #17 (add rclone), #16 (MeedyaSuite org secrets), #8 (automatic

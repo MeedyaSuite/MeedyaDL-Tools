@@ -1214,33 +1214,6 @@ jobs:
           echo "version=$VER" >> "$GITHUB_OUTPUT"
           echo "→ MKVToolNix latest: $VER"
 
-      # Temporary: proves the asset currently on the `latest` release fails
-      # outside the AppImage. Remove once the fix below has been confirmed.
-      - name: "MKVToolNix: Linux x86_64 — check current release asset (temporary)"
-        if: needs.check-versions.outputs.mkvtoolnix == 'true'
-        continue-on-error: true
-        run: |
-          set -euo pipefail
-          D=$(mktemp -d)
-          echo "→ Downloading current latest/mkvtoolnix-linux-x86_64.tar.gz"
-          curl -fL --retry 3 -o "$D/old.tar.gz" \
-            "https://github.com/${{ github.repository }}/releases/download/latest/mkvtoolnix-linux-x86_64.tar.gz"
-          mkdir "$D/x"
-          tar -xzf "$D/old.tar.gz" -C "$D/x"
-          echo "→ Contents:"
-          (cd "$D/x" && ls -la)
-          RC=0
-          OUT=$(cd "$D/x" && ./mkvmerge --version 2>&1) || RC=$?
-          echo "→ ./mkvmerge --version (exit ${RC}): ${OUT}"
-          if [ "$RC" -ne 0 ]; then
-            echo "⚠ Current release asset is broken outside the AppImage (exit ${RC})"
-            echo "→ Libraries the host cannot find:"
-            ldd "$D/x/mkvmerge" | grep 'not found' || true
-          else
-            echo "✓ Current release asset runs"
-          fi
-          rm -rf "$D"
-
       - name: "MKVToolNix: Linux x86_64 (AppImage)"
         if: needs.check-versions.outputs.mkvtoolnix == 'true'
         continue-on-error: true
@@ -1293,6 +1266,7 @@ jobs:
           # (where MeedyaDL looks for them) that point the loader at lib/.
           PKG="$PWD/work/pkg"
           mkdir -p "$PKG/libexec" "$PKG/lib"
+          FROM_HOST=""
           LIBDIRS="$ROOT/usr/lib:$(find "$ROOT" -type f -name '*.so*' -printf '%h\n' | sort -u | paste -sd:)"
           for bin in $TOOLS; do
             BIN_PATH="$ROOT/usr/bin/$bin"
@@ -1313,11 +1287,17 @@ jobs:
                   ;;
                 *)
                   printf '%s\n' "$soname" | grep -qE "$HOST_LIBS" \
-                    || fail "$bin loads $soname from the runner ($path), not the AppImage — it would be missing on user machines"
+                    || FROM_HOST="${FROM_HOST}${soname}"$'\n'
                   ;;
               esac
             done < <(printf '%s\n' "$LDD" | awk '$2 == "=>" && $3 ~ /^\// { print $1, $3 }')
           done
+          echo "→ Bundled from the AppImage: $(ls "$PKG/lib" | paste -sd' ')"
+          # Libraries the AppImage leaves to the host that are not in the
+          # host-provided set would be missing on some user machines.
+          if [ -n "$FROM_HOST" ]; then
+            fail "not in the AppImage and not in the host-provided set: $(printf '%s' "$FROM_HOST" | sort -u | paste -sd, | sed 's/,/, /g')"
+          fi
           find "$PKG/lib" -type f -exec chmod 644 {} +
 
           for bin in $TOOLS; do
