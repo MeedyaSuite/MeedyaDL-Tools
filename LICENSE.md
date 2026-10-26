@@ -59,6 +59,7 @@ The binaries distributed via this repository's GitHub Releases are redistributed
 ### License Compliance Notes
 
 - **GPL v2+ tools** (FFmpeg, mp4decrypt, aria2c, MKVToolNix): Source code is available at the upstream repositories linked above. These binaries are unmodified redistributions.
+- **MKVToolNix on Linux**: the upstream programs are shipped unmodified, together with the shared libraries copied unchanged from the official MKVToolNix AppImage: Qt 6 Core (LGPL v3), Boost (BSL-1.0), FLAC, Ogg and Vorbis (BSD-3-Clause), cmark (BSD-2-Clause), libdvdread (GPL v2+), ICU (Unicode licence), GLib (LGPL v2.1+), GnuTLS (LGPL v2.1+), Nettle (LGPL v3+ / GPL v2+), libtasn1 (LGPL v2.1+), p11-kit (BSD-3-Clause), libidn2 and libunistring (LGPL v3+ / GPL v2+), PCRE (BSD-3-Clause) and libffi (MIT). This repository adds only small launcher scripts that tell the system where those libraries are. Upstream's sources for the AppImage are at [mkvtoolnix.download](https://mkvtoolnix.download/source.html).
 - **Compiled-from-source GPL tools** (potrace, GNU ddrescue): Built unmodified from upstream source in CI. The exact source tarball used for each build is attached to the same GitHub Release (`potrace-<ver>.src.tar.gz`, `ddrescue-<ver>.src.tar.lz`), so the corresponding source is available from this repository directly.
 - **MIT / Apache-2.0 tools** (VTracer): Compiled unmodified from upstream source; its `LICENSE` file ships inside each archive.
 - **LGPL v2.1 tools** (MP4Box, fpcalc): Dynamically linked where applicable. Source code available at upstream repositories.

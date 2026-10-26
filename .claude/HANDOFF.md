@@ -3,15 +3,84 @@
 **Read this first in any new session.** Then read
 [`STANDING_RULES.md`](STANDING_RULES.md) and [`CLAUDE.md`](CLAUDE.md).
 
-Last updated: 2026-10-26 (branch consolidation)
+Last updated: 2026-10-26 (MKVToolNix Linux + macOS fixes consolidated)
 
 ---
 
-## Where we are right now
+## Current task — consolidated MKVToolNix Linux + macOS PR
 
-- **Working branch:** `claude/nifty-shannon-wla302`, started from `main` at
-  `18e4eb3` (2026-10-25). It is the **single** work-in-progress branch and
-  targets `alpha` through one pull request.
+- **Branch:** `claude/kind-goodall-ygobby`, targeting `alpha` through **one**
+  PR with the `update-tools` label. On 2026-10-26 the owner asked for PR #28
+  (macOS, branch `claude/great-galileo-116la9`) and PR #29 (Linux, this
+  branch) to be merged into a single PR to avoid merge races; both were closed
+  in favour of the consolidated PR and #28's branch was deleted (its commit
+  `2e028d5` is merged into this branch). Plan: get every check green, merge
+  into `alpha`, then watch the Actions runs that follow.
+- **Conflict resolution:** the Linux AppImage step keeps this branch's version
+  (it already fails loudly); the macOS job, Windows `::warning::`, and
+  `upload-release` wiring come from #28; docs merged by hand (DEV_Status now
+  has separate Linux and macOS rows).
+- **Consolidated PR:** #30. CI on `00bc4b4` (runs 40338079628 + 40337914361,
+  actionlint runs 40338066963 etc.) all green, step logs read:
+  - Linux: 22 libs bundled, all four tools `v103.0 ('The Darkness') 64-bit`
+    from a clean unpack, 24 MB, GLIBC_2.28 / GLIBCXX_3.4.21.
+  - macOS arm64 (`MKVToolNix-103.0-1-arm64.dmg`) and x86_64
+    (`MKVToolNix-103.0-1-x86_64.dmg`, via Rosetta 2): SHA-256 verified, only
+    `libs/libQt6Core.6.dylib` bundled (`@executable_path/libs/`), all four
+    tools `v103.0` from a clean unpack; 11 MB / 12 MB.
+  - Windows: `mkvtoolnix-windows-x86_64.zip` 35 MB.
+- **Not done:** branch `claude/great-galileo-116la9` (old #28) could not be
+  deleted from the session (git proxy only allows pushes to the session's own
+  branch). Its commit is merged here — the owner can delete it on GitHub.
+- **After merge:** pushes to `alpha` do not run Populate Tools (only `main`
+  does), so nothing is released until `alpha` → `main`.
+
+### MKVToolNix Linux asset
+
+- **Problem:** `mkvtoolnix-linux-x86_64.tar.gz` held only the four programs
+  copied out of the AppImage. They need Qt 6, Boost, FLAC, cmark, libdvdread,
+  GMP, Vorbis/Ogg from inside the AppImage (plus an RPATH pointing at the
+  upstream build machine), so they fail with "error while loading shared
+  libraries". Reproduced locally on Ubuntu 24.04 with the current `latest`
+  asset: `./mkvmerge --version` → exit 127, `libboost_filesystem.so.1.85.0`
+  missing.
+- **MeedyaDL check:** MeedyaDL (`main`, `alpha`, `work-in-progress`) does not
+  use MKVToolNix yet. Its mirror installer unpacks a tarball into
+  `tools/<tool_id>/` and expects programs at the top level, so the top level
+  must keep `mkvmerge` etc.
+- **Fix (in `download-binaries`, step "MKVToolNix: Linux x86_64 (AppImage)"):**
+  the unmodified programs go in `libexec/`, every library `ldd` says they load
+  from the AppImage goes in `lib/` (glibc, libstdc++, libgcc_s and zlib are left
+  to the host), and a small `/bin/sh` launcher at the top level sets
+  `LD_LIBRARY_PATH` and runs the real program. No `patchelf`, so LICENSE.md's
+  "unmodified" wording still holds (a note about the bundled libraries was
+  added). The tarball is unpacked fresh and checked: every library must come
+  from `lib/` or the host set, and `--version` must report `v<ver>` (also via a
+  symlink). Any failure → `::error::`, run-summary line, no asset (EXIT trap),
+  `continue-on-error` kept — same pattern as the macOS job in PR #28.
+- **CI run 1 (run 40331555265, commit e262668):**
+  - Old `latest` asset on `ubuntu-latest`: `./mkvmerge --version` → exit 127;
+    `libboost_filesystem.so.1.85.0`, `libFLAC.so.8`, `libQt6Core.so.6`,
+    `libcmark.so.0.28.3`, `libdvdread.so.4` not found. Original bug confirmed.
+    The temporary check step has now been removed.
+  - New step stopped with `::error::` and produced no asset (as designed):
+    `libgmp.so.10` is **not inside the AppImage** — upstream expects the host to
+    provide it. The job still showed green because of `continue-on-error`.
+  - The step now lists every such library at once (and what it bundled).
+- **CI run 2 (run 40333164882, commit 3380cd2):** bundled 22 libraries
+  (FLAC, Qt6Core, Boost atomic + filesystem, cmark, libdvdread, libffi, GLib +
+  gthread, GnuTLS, Nettle/hogweed, ICU data/i18n/uc 56, libidn2, Ogg,
+  p11-kit, PCRE, libtasn1, libunistring, Vorbis). Only `libgmp.so.10` is left
+  to the host. Decision: treat GMP as host-provided, like the upstream
+  AppImage does (added to `HOST_LIBS`, README + LICENSE.md updated with the
+  real bundled list). Copying the runner's Ubuntu GMP was rejected: it mixes
+  non-upstream builds into the tarball.
+- **CI run 3 (run 40334308316, commit 12e2736):** passed. From a clean
+  unpack all four tools print `v103.0 ('The Darkness') 64-bit`, also through
+  a symlink. Tarball 24 MB; needs glibc ≥ 2.28 and GLIBCXX_3.4.21 (README +
+  DEV_Status updated).
+
+## Background
 - **`alpha` branch:** created from `main` on 2026-10-26 (it did not exist
   before). Pushes to `alpha` do **not** cut a release — only pushes to `main`
   do. Getting the work released means a later `alpha` → `main` merge.
@@ -50,16 +119,47 @@ Last updated: 2026-10-26 (branch consolidation)
   kept as fallback), and each macOS binary is checked to be the right
   architecture before packaging.
 
+### MKVToolNix macOS fix (from PR #28, now in the consolidated branch)
+
+- **Problem:** `mkvtoolnix-macos-*.tar.gz` had been missing from every release
+  since at least 2026-09-01, yet CI stayed green. The old URL
+  `mkvtoolnix.download/macos/MKVToolNix-<ver>.dmg` now returns an empty file,
+  and the step's "no binaries found" branch exited 0.
+- **Upstream did NOT drop macOS.** A pause was announced in April 2026, but
+  community maintainers (corticalcode, touchstone64) restored official,
+  notarised DMGs from v98/v99. They live at
+  `macos/releases/<ver>/MKVToolNix-<ver>-<rev>-{arm64,x86_64,universal}.dmg`
+  with `.sha256` files. `<rev>` is a repackaging number (starts at 1).
+- **Why a new macOS job:** the DMGs are LZFSE-compressed APFS images. 7-Zip
+  23.01, bsdtar and dmg2img on Linux can't read them (checked locally against
+  an equivalent community DMG). The new `mkvtoolnix-macos` job runs on
+  `macos-latest` and uses `hdiutil`.
+- **What it does:** finds the newest DMG revision, checks SHA-256, copies
+  mkvmerge/mkvextract/mkvpropedit/mkvinfo plus any bundled libraries they load,
+  checks the CPU type, then runs `--version` from a clean unpack (x86_64 through
+  Rosetta 2). Any failure gives an `::error::` annotation plus a run-summary
+  line, and no asset. The step keeps `continue-on-error`, so one missing asset
+  never blocks the rest of the release.
+- **Assets:** `mkvtoolnix-macos-aarch64` (now native; it used to hold the
+  Intel build) and new `mkvtoolnix-macos-x86_64`.
+- **Still to check on the PR run:** the step log, not just the job status. If
+  a library loads from `Contents/Frameworks` (outside `Contents/MacOS`), the
+  step fails on purpose with a clear message and the packaging layout needs
+  adjusting.
+
 ## Task queue
 
 | # | Task | Status |
 | - | ---- | ------ |
 | 1 | Consolidate old branches + PRs #25/#26 into one WIP branch | ✅ Done |
-| 2 | Open the consolidated PR to `alpha`, get CI green, merge | ⏳ In progress |
+| 2 | Open the consolidated PR to `alpha`, get CI green, merge | ✅ Done (PR #27 merged) |
+| 2a | MKVToolNix macOS: restore the asset, make failures loud (was PR #28) | ✅ Passed on CI (run 40338079628, both arches); in PR #30 |
 | 3 | GPL disc tools: cdrdao, cdparanoia, wodim (Linux), one at a time, each confirmed on CI | ⏳ Not started |
 | 4 | GPL disc tools: macOS builds (reuse the `build-tracing-tools` macOS pattern) | ⏳ Not started |
 | 5 | Thorough documentation pass (CHANGELOG history still says "monthly schedule") | ⏳ Not started |
 | 6 | Device-wide AI fallback rule on the owner's own machines (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`) | ❓ Owner to do locally |
+| 7 | MKVToolNix Linux asset: bundle libraries + launchers, clean-unpack smoke test (was PR #29) | ✅ Passed on CI (run 40334308316); now in the consolidated PR |
+| 8 | Consolidated PR #30 (#28 + #29) → green → merge to `alpha` → watch post-merge Actions | ⏳ CI green; merging |
 
 Open issues: #19 (publish SHA256SUMS — done on `main` by PR #20, could be
 closed), #17 (add rclone), #16 (MeedyaSuite org secrets), #8 (automatic
@@ -67,7 +167,7 @@ upstream version checking — largely done by the `check-versions` job).
 
 ## How to pick up in a fresh session
 
-1. `git fetch origin && git checkout claude/nifty-shannon-wla302 && git pull`
+1. `git fetch origin && git checkout claude/great-galileo-116la9 && git pull`
    (or, once merged, start a new branch from `alpha`).
 2. Read this file, then `STANDING_RULES.md`, then `CLAUDE.md`.
 3. Carry on with the task queue from the first unfinished item.

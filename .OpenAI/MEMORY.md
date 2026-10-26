@@ -14,3 +14,13 @@ Short-lived notes for Codex. The authoritative state is always
   `claude/nifty-shannon-wla302` and deleted. `alpha` created from `main`.
   Workflow changes from that merge (potrace/vtracer/ddrescue builds, macOS
   ffmpeg hard-fail, ddrescue version gating) are ready for a Codex review.
+- 2026-10-26: Branch `claude/kind-goodall-ygobby` (from `alpha`): MKVToolNix
+  Linux asset now ships `libexec/` (unmodified programs) + `lib/` (AppImage
+  libraries) + root launcher scripts, with a clean-unpack smoke test. Ready for
+  a Codex review of the "MKVToolNix: Linux x86_64 (AppImage)" step.
+  CI confirmed (run 40334308316): `--version` → v103.0 from a clean unpack;
+  `libgmp.so.10` treated as host-provided (the AppImage does not bundle it).
+- 2026-10-26: MKVToolNix macOS fix on `claude/great-galileo-116la9` (from
+  `alpha`): new `mkvtoolnix-macos` job in `populate.yml` packages the official
+  arm64 + x86_64 DMGs with hdiutil. Ready for a Codex review of that job's shell
+  script (dependency copying, error handling via the EXIT trap).

@@ -60,7 +60,7 @@ This repository serves as a **mirror** for external tool binaries that MeedyaDL 
 **Y** = pre-built binary
 **Y*** = Perl script (requires Perl runtime)
 **Y**** = Windows installer
-**Y***** = x86_64 via Rosetta 2
+**Y***** = native Apple Silicon binary from the official upstream DMG; a separate Intel (`macos-x86_64`) asset is also published
 **Y****** = compiled from source; macOS ships separate aarch64 + x86_64 assets (no universal binary is produced in this repo)
 **—** = not available
 
@@ -81,6 +81,25 @@ Tools compiled from source in CI (potrace, VTracer, ddrescue) also ship the
 exact source they were built from as `{tool_id}-{version}.src.{tar.gz,tar.lz}`
 (e.g. `potrace-1.16.src.tar.gz`, `ddrescue-1.28.src.tar.lz`) — for the GPL
 tools this is their corresponding source.
+
+### MKVToolNix on Linux
+
+`mkvtoolnix-linux-x86_64.tar.gz` is taken from the official AppImage. Its
+programs only work next to the libraries the AppImage carries (Qt, Boost,
+FLAC, ICU, GLib, GnuTLS, …), so the tarball ships them together:
+
+```text
+mkvmerge  mkvextract  mkvpropedit  mkvinfo   ← small launcher scripts — run these
+libexec/                                     ← the unmodified upstream programs
+lib/                                         ← libraries copied from the AppImage
+```
+
+Run the tools from the top level (or through a symlink to them); keep `lib/`
+and `libexec/` next to them. The host only needs glibc, the C++/GCC runtime
+(`libstdc++`, `libgcc_s`), zlib and GMP (`libgmp.so.10`), which every desktop
+Linux has — the official AppImage expects the same. glibc must be 2.28 or
+newer (Debian 10, Ubuntu 18.10, RHEL 8 and later). Each build
+is checked by running `--version` from a fresh unpack before it is published.
 
 ## Releases
 
