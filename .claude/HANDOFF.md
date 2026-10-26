@@ -20,6 +20,20 @@ Last updated: 2026-10-26 (MKVToolNix Linux + macOS fixes consolidated)
   (it already fails loudly); the macOS job, Windows `::warning::`, and
   `upload-release` wiring come from #28; docs merged by hand (DEV_Status now
   has separate Linux and macOS rows).
+- **Consolidated PR:** #30. CI on `00bc4b4` (runs 40338079628 + 40337914361,
+  actionlint runs 40338066963 etc.) all green, step logs read:
+  - Linux: 22 libs bundled, all four tools `v103.0 ('The Darkness') 64-bit`
+    from a clean unpack, 24 MB, GLIBC_2.28 / GLIBCXX_3.4.21.
+  - macOS arm64 (`MKVToolNix-103.0-1-arm64.dmg`) and x86_64
+    (`MKVToolNix-103.0-1-x86_64.dmg`, via Rosetta 2): SHA-256 verified, only
+    `libs/libQt6Core.6.dylib` bundled (`@executable_path/libs/`), all four
+    tools `v103.0` from a clean unpack; 11 MB / 12 MB.
+  - Windows: `mkvtoolnix-windows-x86_64.zip` 35 MB.
+- **Not done:** branch `claude/great-galileo-116la9` (old #28) could not be
+  deleted from the session (git proxy only allows pushes to the session's own
+  branch). Its commit is merged here — the owner can delete it on GitHub.
+- **After merge:** pushes to `alpha` do not run Populate Tools (only `main`
+  does), so nothing is released until `alpha` → `main`.
 
 ### MKVToolNix Linux asset
 
@@ -139,13 +153,13 @@ Last updated: 2026-10-26 (MKVToolNix Linux + macOS fixes consolidated)
 | - | ---- | ------ |
 | 1 | Consolidate old branches + PRs #25/#26 into one WIP branch | ✅ Done |
 | 2 | Open the consolidated PR to `alpha`, get CI green, merge | ✅ Done (PR #27 merged) |
-| 2a | MKVToolNix macOS: restore the asset, make failures loud (was PR #28) | ⏳ In the consolidated PR; macOS step logs still to check |
+| 2a | MKVToolNix macOS: restore the asset, make failures loud (was PR #28) | ✅ Passed on CI (run 40338079628, both arches); in PR #30 |
 | 3 | GPL disc tools: cdrdao, cdparanoia, wodim (Linux), one at a time, each confirmed on CI | ⏳ Not started |
 | 4 | GPL disc tools: macOS builds (reuse the `build-tracing-tools` macOS pattern) | ⏳ Not started |
 | 5 | Thorough documentation pass (CHANGELOG history still says "monthly schedule") | ⏳ Not started |
 | 6 | Device-wide AI fallback rule on the owner's own machines (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`) | ❓ Owner to do locally |
 | 7 | MKVToolNix Linux asset: bundle libraries + launchers, clean-unpack smoke test (was PR #29) | ✅ Passed on CI (run 40334308316); now in the consolidated PR |
-| 8 | Consolidated PR (#28 + #29) → green → merge to `alpha` → watch post-merge Actions | ⏳ In progress |
+| 8 | Consolidated PR #30 (#28 + #29) → green → merge to `alpha` → watch post-merge Actions | ⏳ CI green; merging |
 
 Open issues: #19 (publish SHA256SUMS — done on `main` by PR #20, could be
 closed), #17 (add rclone), #16 (MeedyaSuite org secrets), #8 (automatic
