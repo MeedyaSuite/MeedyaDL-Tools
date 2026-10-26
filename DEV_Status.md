@@ -28,8 +28,9 @@ Current build status and tool availability for MeedyaDL-Tools.
 | MediaInfo | OK | OK | — | — | OK | OK | OK |
 | OF-Scraper | OK | OK | — | — | OK | — | OK |
 | MKVToolNix | OK***** | — | — | — | OK | — | OK***** |
-| potrace | OK* | OK* | — | — | — | OK* |
-| vtracer | OK* | OK* | — | — | — | OK* |
+| potrace | OK* | OK* | — | — | — | — | OK* |
+| vtracer | OK* | OK* | — | — | — | — | OK* |
+| ddrescue | OK* | — | — | — | — | — | — |
 
 **Legend:**
 
@@ -100,32 +101,30 @@ for current versions.
 
 ---
 
-## GPL optical-disc tools (branch `feat/gpl-disc-tools`, 2026-09-02)
+## GPL optical-disc tools (started 2026-09-02, PR #25 — now on the consolidated WIP branch)
 
 Feeds MeedyaConverter's disc-backup-imaging feature (MeedyaConverter#492/#495),
 Direct distribution only, per that repo's DR-0001. All four tools are pinned in
-`versions.json` and the `env:` block of `populate.yml`.
+the `env:` block of `populate.yml`; only `ddrescue` (the one actually built) is
+tracked in `versions.json`, because `versions.json` records what was packaged.
 
-**Done on this branch:**
+**Done:**
 - `ddrescue` (GPLv3) — Linux x86_64 build **from source**, with the source
   tarball archived to the release as `ddrescue-<ver>.src.tar.lz`. This is the
   working template: fetch upstream source → build → stage binary → stage
   source. It is portable, DRM-neutral, and generally useful for any
-  block-device imaging.
+  block-device imaging. Wired into `check-versions` like potrace/vtracer, so
+  it only rebuilds when `DDRESCUE_VERSION` changes (or on a forced rebuild).
 
 **Follow-ups (same pattern; each needs this repo's CI to validate the build):**
 - `cdrdao` (GPLv2), `cdparanoia` (GPLv2), `wodim` / cdrkit (GPLv2) — Linux
   builds. Their builds are finicky (autotools of varying vintage, external
   deps: libao/libvorbis/libmad for cdrdao) and were not authored blind; add
   them one at a time and confirm each on CI.
-- **macOS-universal (arm64 + x86_64) builds.** This workflow currently
-  *downloads* prebuilt macOS binaries and has **no macOS compile runner**.
-  Building our own for macOS (per DR-0001) needs a new `runs-on: macos-latest`
-  job that compiles + `lipo`-combines per-arch and uploads to the same release,
-  mirroring how ffmpeg's universal binary is assembled. That is the largest
-  remaining piece.
-- A per-tool upstream version-check hook (these are pinned via `env:` for now,
-  so they rebuild every run rather than on upstream change).
+- **macOS (arm64 + x86_64) builds.** The `build-tracing-tools` job (from
+  PR #26) now provides a `macos-latest` compile runner that builds two thin
+  per-arch binaries (x86_64 cross-built from the arm64 host). The disc tools
+  can follow that same pattern; the consumer `lipo`-combines them.
 
 **Do not** treat the disc-tool supply chain as complete until the macOS builds
 land and each tool's CI is green. The MeedyaConverter side (App-Store exclusion

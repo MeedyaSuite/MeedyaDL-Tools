@@ -12,16 +12,19 @@ Mirror repository for external tool binaries used by [MeedyaDL](https://github.c
 ## Architecture
 
 - All tool binaries live in GitHub Release assets (date-stamped + `latest` tag), not in the git tree
-- `populate.yml` is the core file (~1580 lines) — 4-job workflow:
+- `populate.yml` is the core file (~1860 lines) — 5-job workflow:
   1. **check-versions** — compares upstream versions against `versions.json`; on schedule only rebuilds changed tools; on push/dispatch forces full rebuild
   2. **download-binaries** — downloads pre-built tools from upstream (per-tool `if:` conditions skip unchanged tools)
   3. **build-python-tools** — builds Votify/gytmdl/gamdl/OF-Scraper via PyInstaller across 4 platform matrix runners
-  4. **upload-release** — carries forward unchanged assets from previous release, creates date-stamped release + updates `latest` tag, auto-commits `versions.json`
+  4. **build-tracing-tools** — compiles potrace + vtracer from source (Linux x86_64/aarch64, macOS aarch64 + cross-built x86_64); version-pinned via `env:`
+  5. **upload-release** — carries forward unchanged assets from previous release, creates date-stamped release + updates `latest` tag, auto-commits `versions.json`
 - `versions.json` tracks last-packaged upstream versions (auto-committed by CI with `[skip ci]`)
 
-## Tools Mirrored (16)
+## Tools Mirrored (19)
 
-FFmpeg, yt-dlp, mp4decrypt, MP4Box, N_m3u8DL-RE, aria2c, fpcalc, get_iplayer, Votify, gytmdl, gamdl, AMdecrypt, Wrapper, MediaInfo, OF-Scraper, MKVToolNix
+FFmpeg, yt-dlp, mp4decrypt, MP4Box, N_m3u8DL-RE, aria2c, fpcalc, get_iplayer, Votify, gytmdl, gamdl, AMdecrypt, Wrapper, MediaInfo, OF-Scraper, MKVToolNix, potrace, vtracer, ddrescue
+
+potrace, vtracer and ddrescue are compiled from source (for MeedyaConverter, DR-0001) and their exact source tarballs are attached to the release (`{tool}-{ver}.src.tar.*`). They are pinned in the `env:` block (`POTRACE_VERSION`, `VTRACER_VERSION`, `DDRESCUE_VERSION`) — bump deliberately, never auto-follow upstream. cdrdao / cdparanoia / wodim are pinned in `env:` but not built yet (see `DEV_Status.md`).
 
 ## Asset Naming
 
@@ -61,6 +64,7 @@ FFmpeg, yt-dlp, mp4decrypt, MP4Box, N_m3u8DL-RE, aria2c, fpcalc, get_iplayer, Vo
 | `DEV_Status.md` | Build status and known limitations |
 | `LICENSE.md` | MIT for repo + per-tool upstream licenses |
 | `.github/dependabot.yml` | GitHub Actions version updates (monthly) |
+| `.claude/settings.json` | Project Claude Code settings (enables the `dev-team` plugin) |
 | `.claude/HANDOFF.md` | Current state of play — update as you go |
 | `.claude/STANDING_RULES.md` | Standing rules for all AI tools |
 | `.OpenAI/AGENTS.md` | Codex/OpenAI context (points to the same rules) |
