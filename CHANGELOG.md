@@ -23,7 +23,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **.gitignore**: Exclude build artifacts, OS files, local settings
 - **.gitattributes**: Collapse .claude/ in GitHub UI, normalize line endings
 
+### Fixed
+- **MKVToolNix macOS**: the asset had been missing from every release since at least 2026-09-01 while CI stayed green. Upstream moved its macOS DMGs to `macos/releases/<ver>/MKVToolNix-<ver>-<rev>-{arm64,x86_64,universal}.dmg`; the old `macos/MKVToolNix-<ver>.dmg` URL returns an empty file, and the step then exited 0 through its "no binaries found" branch. The DMGs are also LZFSE-compressed APFS images that the Linux extractors can't open. Now packaged in a new `mkvtoolnix-macos` job on `macos-latest` (hdiutil), with a SHA-256 check against upstream's `.sha256`, bundled libraries copied alongside the CLI tools, and a `--version` smoke test from a clean unpack
+- **MKVToolNix "no binaries" paths**: no longer silent — macOS and Linux raise an `::error::` annotation (and produce no asset), Windows a `::warning::`
+
 ### Changed
+- **MKVToolNix macOS assets**: `mkvtoolnix-macos-aarch64.tar.gz` is now a native Apple Silicon build (it used to hold the Intel build, run through Rosetta 2), and a new `mkvtoolnix-macos-x86_64.tar.gz` holds the Intel build. Upstream did not drop macOS: after a pause announced in April 2026, official notarised DMGs (arm64, x86_64, universal) are published again from v98/v99
 - **CI schedule**: daily (06:00 UTC) smart rebuild — only tools whose upstream version changed are rebuilt
 - **macOS FFmpeg**: a failure to fetch ffmpeg/ffprobe now fails the build instead of silently shipping a release without them; ffplay stays optional
 - **macOS FFmpeg x86_64 source**: switched from evermeet.cx (HTTP 410 Gone since 2026-10-13 — releases since then had been carrying forward stale, mismatched macOS ffmpeg/ffprobe/ffplay) to ffmpeg.martin-riedl.de, with evermeet.cx kept as a fallback and a Mach-O architecture check on every macOS binary

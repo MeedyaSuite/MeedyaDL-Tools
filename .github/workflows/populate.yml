@@ -1203,6 +1203,8 @@ jobs:
       # MKVToolNix
       # Source: mkvtoolnix.download (no GitHub releases)
       # Includes: mkvmerge, mkvextract, mkvpropedit, mkvinfo
+      # macOS is packaged in the separate mkvtoolnix-macos job (its DMGs are
+      # LZFSE-compressed APFS images that only hdiutil on macOS can open).
       # =============================================================
 
       - name: "MKVToolNix: Detect latest version"
@@ -1240,7 +1242,8 @@ jobs:
             tar -czf staging/mkvtoolnix-linux-x86_64.tar.gz -C work/pkg .
             echo "✓ mkvtoolnix-linux-x86_64.tar.gz"
           else
-            echo "⚠ No MKVToolNix binaries found in AppImage"
+            echo "::error::⚠ No MKVToolNix binaries found in AppImage — mkvtoolnix-linux-x86_64.tar.gz not produced"
+            exit 1
           fi
           rm -rf work/appimage_extract work/pkg work/mkvtoolnix.AppImage
 
@@ -1265,48 +1268,9 @@ jobs:
             (cd work/pkg && zip -q ../../staging/mkvtoolnix-windows-x86_64.zip *.exe)
             echo "✓ mkvtoolnix-windows-x86_64.zip"
           else
-            echo "⚠ No MKVToolNix binaries found in archive"
+            echo "::warning::⚠ No MKVToolNix binaries found in archive — mkvtoolnix-windows-x86_64.zip not produced"
           fi
           rm -rf work/extract work/pkg work/mkvtoolnix.7z
-
-      - name: "MKVToolNix: macOS (DMG)"
-        if: needs.check-versions.outputs.mkvtoolnix == 'true'
-        continue-on-error: true
-        run: |
-          set -euo pipefail
-          VER="${{ steps.mkvtoolnix_meta.outputs.version }}"
-          echo "→ Downloading MKVToolNix macOS DMG"
-          curl -fL --retry 3 -o work/mkvtoolnix.dmg \
-            "https://mkvtoolnix.download/macos/MKVToolNix-${VER}.dmg"
-          # Try multiple extraction methods — DMGs vary in format
-          mkdir -p work/extract
-          # Method 1: 7z (works for some DMGs)
-          7z x work/mkvtoolnix.dmg -owork/extract -y > /dev/null 2>&1 || true
-          # Method 2: bsdtar (handles more DMG/HFS formats)
-          bsdtar -xf work/mkvtoolnix.dmg -C work/extract 2>/dev/null || true
-          # Method 3: If we got an HFS image, extract that too
-          find work/extract -type f -name "*.hfs" | while read hfs; do
-            7z x "$hfs" -owork/extract/hfs_out -y > /dev/null 2>&1 || true
-          done
-          echo "→ Searching for MKVToolNix binaries..."
-          find work/extract -type f -name "mkv*" 2>/dev/null | head -20 || true
-          # CLI tools are inside .app/Contents/MacOS/
-          mkdir -p work/pkg
-          for bin in mkvmerge mkvextract mkvpropedit mkvinfo; do
-            BIN_PATH=$(find work/extract -name "$bin" -type f 2>/dev/null | head -1)
-            if [ -n "$BIN_PATH" ]; then
-              cp "$BIN_PATH" "work/pkg/$bin" && chmod +x "work/pkg/$bin"
-              echo "→ Found $bin"
-            fi
-          done
-          if [ "$(ls work/pkg/ 2>/dev/null | wc -l)" -gt 0 ]; then
-            tar -czf staging/mkvtoolnix-macos-aarch64.tar.gz -C work/pkg .
-            echo "✓ mkvtoolnix-macos-aarch64.tar.gz"
-          else
-            echo "⚠ No MKVToolNix binaries found in DMG — listing all extracted files:"
-            find work/extract -type f 2>/dev/null | head -50
-          fi
-          rm -rf work/extract work/pkg work/mkvtoolnix.dmg
 
       # =============================================================
       # get_iplayer
@@ -1712,6 +1676,196 @@ jobs:
           if-no-files-found: warn
 
   # =====================================================================
+  # Job 2c: MKVToolNix macOS (official notarised DMGs)
+  # Source: mkvtoolnix.download/macos/releases/<ver>/
+  #         MKVToolNix-<ver>-<rev>-{arm64,x86_64}.dmg (+ .sha256)
+  # Runs on macOS because the DMGs are LZFSE-compressed APFS images that
+  # the Linux extractors (7z, bsdtar, dmg2img) cannot open; hdiutil can.
+  # The CLI tools are copied out of the .app together with any bundled
+  # libraries they load, then smoke-tested from a clean unpack of the
+  # tarball. Any failure is reported as an ::error:: annotation and in the
+  # run summary; the step keeps continue-on-error so one missing asset
+  # never blocks the rest of the release.
+  # =====================================================================
+  mkvtoolnix-macos:
+    needs: [check-versions]
+    if: >-
+      needs.check-versions.outputs.mkvtoolnix == 'true' &&
+      (github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'update-tools'))
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: aarch64      # asset arch
+            dmg_arch: arm64    # upstream DMG suffix
+          - arch: x86_64
+            dmg_arch: x86_64
+    runs-on: macos-latest
+    steps:
+      - name: Create staging directories
+        run: mkdir -p staging work
+
+      - name: "MKVToolNix: macOS ${{ matrix.arch }} (DMG)"
+        id: package
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          ARCH="${{ matrix.arch }}"
+          DMG_ARCH="${{ matrix.dmg_arch }}"
+          ASSET="mkvtoolnix-macos-${ARCH}.tar.gz"
+          MNT="$PWD/work/mnt"
+          FAILED=""
+          ERR_LINE=""
+          fail() {
+            FAILED=1
+            echo "::error title=MKVToolNix macOS ${ARCH}::$1 — ${ASSET} not produced"
+            echo "⚠ MKVToolNix macOS ${ARCH}: $1" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          }
+          # Never leave an unverified asset behind, and never exit non-zero
+          # without an ::error:: annotation (set -e exits are caught here).
+          cleanup() {
+            local rc=$?
+            hdiutil detach "$MNT" -force > /dev/null 2>&1 || true
+            if [ "$rc" -ne 0 ]; then
+              rm -f "staging/${ASSET}"
+              if [ -z "$FAILED" ]; then
+                echo "::error title=MKVToolNix macOS ${ARCH}::step failed (exit ${rc}${ERR_LINE:+, line ${ERR_LINE}}) — ${ASSET} not produced"
+              fi
+            fi
+          }
+          trap 'ERR_LINE=$LINENO' ERR
+          trap cleanup EXIT
+
+          VER=$(curl -fsSL --retry 3 "https://mkvtoolnix.download/sources/" \
+            | grep -oE 'mkvtoolnix-[0-9.]+\.tar\.xz"' \
+            | sed -E 's/^mkvtoolnix-//; s/\.tar\.xz"$//' \
+            | sort -t. -k1,1n -k2,2n -k3,3n | tail -1) || true
+          [ -n "$VER" ] || fail "could not detect the latest MKVToolNix version"
+          echo "→ MKVToolNix latest: $VER"
+
+          # Pick the newest DMG revision (the -<rev> part) for this arch.
+          BASE="https://mkvtoolnix.download/macos/releases/${VER}"
+          VER_RE=$(printf '%s' "$VER" | sed 's/\./\\./g')
+          DMG=$(curl -fsSL --retry 3 "${BASE}/" \
+            | grep -oE "MKVToolNix-${VER_RE}-[0-9]+-${DMG_ARCH}\.dmg" \
+            | sort -u -t- -k3,3n | tail -1) || true
+          [ -n "$DMG" ] || fail "no ${DMG_ARCH} DMG listed at ${BASE}/ (upstream may have dropped this macOS build)"
+
+          echo "→ Downloading MKVToolNix macOS DMG: ${DMG}"
+          curl -fL --retry 3 -o "work/${DMG}" "${BASE}/${DMG}"
+          curl -fsSL --retry 3 -o "work/${DMG}.sha256" "${BASE}/${DMG}.sha256"
+          WANT=$(grep -oE '[0-9a-fA-F]{64}' "work/${DMG}.sha256" | head -1 | tr 'A-F' 'a-f') || true
+          GOT=$(shasum -a 256 "work/${DMG}" | awk '{print $1}')
+          [ -n "$WANT" ] && [ "$WANT" = "$GOT" ] \
+            || fail "SHA-256 mismatch for ${DMG} (expected ${WANT:-none}, got ${GOT})"
+          echo "✓ SHA-256 verified ($(du -h "work/${DMG}" | cut -f1))"
+
+          mkdir -p "$MNT"
+          hdiutil attach -nobrowse -readonly -noautoopen -mountpoint "$MNT" "work/${DMG}" > /dev/null
+          APP=$(find "$MNT" -maxdepth 1 -type d -name "*.app" | head -1)
+          [ -n "$APP" ] || fail "no .app bundle found in ${DMG}"
+          EXE_DIR=$(cd "$APP/Contents/MacOS" && pwd -P)
+          echo "→ App bundle: $(basename "$APP")"
+
+          # Copy the CLI tools, then every library they load from inside the
+          # bundle (following @executable_path, @loader_path and @rpath),
+          # keeping each library's path relative to the tools so the
+          # bundle's own load paths still resolve after unpacking.
+          PKG="$PWD/work/pkg"
+          mkdir -p "$PKG"
+          abspath() { (cd "$(dirname "$1")" 2> /dev/null && printf '%s/%s\n' "$(pwd -P)" "$(basename "$1")"); }
+          rpaths() { otool -l "$1" | awk '$1 == "cmd" && $2 == "LC_RPATH" { getline; getline; print $2 }'; }
+          QUEUE=""
+          SEEN=""
+          add_file() {   # $1 absolute path inside EXE_DIR
+            local rel="${1#"$EXE_DIR"/}"
+            if printf '%s\n' "$SEEN" | grep -qxF "$rel"; then return 0; fi
+            SEEN="${SEEN}${rel}"$'\n'
+            mkdir -p "$PKG/$(dirname "$rel")"
+            cp -p "$1" "$PKG/$rel"
+            QUEUE="${QUEUE}$1"$'\n'
+          }
+          for bin in mkvmerge mkvextract mkvpropedit mkvinfo; do
+            [ -f "$EXE_DIR/$bin" ] || fail "$bin not found in $(basename "$APP")/Contents/MacOS"
+            add_file "$EXE_DIR/$bin"
+            echo "→ Found $bin"
+          done
+          while [ -n "$QUEUE" ]; do
+            FILE=$(printf '%s' "$QUEUE" | head -1)
+            QUEUE=$(printf '%s' "$QUEUE" | tail -n +2)
+            [ -z "$QUEUE" ] || QUEUE="${QUEUE}"$'\n'
+            SELF_ID=$(otool -D "$FILE" | tail -n +2)   # a library's own install name
+            for dep in $(otool -L "$FILE" | grep -E '^[[:space:]]' | awk '{print $1}'); do
+              [ "$dep" != "$SELF_ID" ] || continue
+              case "$dep" in
+                /usr/lib/*|/System/*) continue ;;
+                @executable_path/*) CAND="$EXE_DIR/${dep#@executable_path/}" ;;
+                @loader_path/*)     CAND="$(dirname "$FILE")/${dep#@loader_path/}" ;;
+                @rpath/*)
+                  CAND=""
+                  for rp in $(rpaths "$FILE") $(rpaths "$EXE_DIR/mkvmerge"); do
+                    rp="${rp/@executable_path/$EXE_DIR}"
+                    rp="${rp/@loader_path/$(dirname "$FILE")}"
+                    if [ -f "$rp/${dep#@rpath/}" ]; then CAND="$rp/${dep#@rpath/}"; break; fi
+                  done
+                  [ -n "$CAND" ] || fail "cannot resolve $dep (needed by $(basename "$FILE"))"
+                  ;;
+                *) fail "$(basename "$FILE") links to $dep outside the app bundle" ;;
+              esac
+              REAL=$(abspath "$CAND") || true
+              [ -n "$REAL" ] && [ -f "$REAL" ] || fail "$dep (needed by $(basename "$FILE")) is missing from the bundle"
+              case "$REAL" in
+                "$EXE_DIR"/*) add_file "$REAL" ;;
+                *) fail "$dep (needed by $(basename "$FILE")) lives outside Contents/MacOS — cannot ship root-level tools" ;;
+              esac
+            done
+          done
+          hdiutil detach "$MNT" > /dev/null
+
+          echo "→ Packaged files:"
+          (cd "$PKG" && find . -type f | sort)
+          echo "→ mkvmerge links to:"
+          otool -L "$PKG/mkvmerge" | tail -n +2
+          for bin in mkvmerge mkvextract mkvpropedit mkvinfo; do
+            lipo -archs "$PKG/$bin" | tr ' ' '\n' | grep -qx "$DMG_ARCH" \
+              || fail "$bin is $(lipo -archs "$PKG/$bin"), expected $DMG_ARCH"
+          done
+          tar -czf "staging/${ASSET}" -C "$PKG" .
+
+          # Smoke test from a clean unpack, so a missing library fails here
+          # rather than on a user's machine. x86_64 runs via Rosetta 2.
+          if [ "$DMG_ARCH" = "x86_64" ] && ! arch -x86_64 /usr/bin/true 2> /dev/null; then
+            sudo softwareupdate --install-rosetta --agree-to-license > /dev/null 2>&1 || true
+          fi
+          if [ "$DMG_ARCH" = "x86_64" ] && ! arch -x86_64 /usr/bin/true 2> /dev/null; then
+            echo "::warning title=MKVToolNix macOS ${ARCH}::Rosetta 2 unavailable on this runner — run test skipped (arch + library checks passed)"
+          else
+            mkdir -p work/smoke
+            tar -xzf "staging/${ASSET}" -C work/smoke
+            for bin in mkvmerge mkvextract mkvpropedit mkvinfo; do
+              OUT=$(cd work/smoke && arch "-${DMG_ARCH}" "./$bin" --version 2>&1) \
+                || fail "$bin --version failed from a clean unpack: ${OUT}"
+              printf '%s\n' "$OUT" | grep -qF "v${VER}" \
+                || fail "$bin reports '${OUT}', expected v${VER}"
+              echo "→ ${OUT}"
+            done
+          fi
+          rm -rf work/smoke work/pkg "work/${DMG}" "work/${DMG}.sha256"
+          echo "✓ ${ASSET}"
+
+      - name: List produced assets
+        run: ls -lh staging/ 2>/dev/null || echo "No assets produced"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: mkvtoolnix-macos-${{ matrix.arch }}
+          path: staging/
+          retention-days: 1
+          if-no-files-found: warn
+
+  # =====================================================================
   # Job 3: Upload all assets to GitHub Releases
   # Creates a date-stamped release (e.g. 2026-02-25) and updates the
   # "latest" tag to always point at the newest release.
@@ -1720,7 +1874,7 @@ jobs:
   # assets from the previous 'latest' release to ensure complete releases.
   # =====================================================================
   upload-release:
-    needs: [check-versions, download-binaries, build-python-tools, build-tracing-tools]
+    needs: [check-versions, download-binaries, build-python-tools, build-tracing-tools, mkvtoolnix-macos]
     runs-on: ubuntu-latest
     # Only upload on push/schedule/dispatch (not PRs), and only if something changed
     if: >-
@@ -1730,7 +1884,8 @@ jobs:
       (needs.download-binaries.result == 'success' || needs.download-binaries.result == 'skipped') &&
       (needs.build-python-tools.result == 'success' || needs.build-python-tools.result == 'skipped') &&
       (needs.build-tracing-tools.result == 'success' || needs.build-tracing-tools.result == 'skipped') &&
-      (needs.download-binaries.result == 'success' || needs.build-python-tools.result == 'success' || needs.build-tracing-tools.result == 'success')
+      (needs.mkvtoolnix-macos.result == 'success' || needs.mkvtoolnix-macos.result == 'skipped') &&
+      (needs.download-binaries.result == 'success' || needs.build-python-tools.result == 'success' || needs.build-tracing-tools.result == 'success' || needs.mkvtoolnix-macos.result == 'success')
     steps:
       - uses: actions/checkout@v7.0.1
 

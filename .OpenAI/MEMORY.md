@@ -14,3 +14,7 @@ Short-lived notes for Codex. The authoritative state is always
   `claude/nifty-shannon-wla302` and deleted. `alpha` created from `main`.
   Workflow changes from that merge (potrace/vtracer/ddrescue builds, macOS
   ffmpeg hard-fail, ddrescue version gating) are ready for a Codex review.
+- 2026-10-26: MKVToolNix macOS fix on `claude/great-galileo-116la9` (from
+  `alpha`): new `mkvtoolnix-macos` job in `populate.yml` packages the official
+  arm64 + x86_64 DMGs with hdiutil. Ready for a Codex review of that job's shell
+  script (dependency copying, error handling via the EXIT trap).

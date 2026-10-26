@@ -3,15 +3,17 @@
 **Read this first in any new session.** Then read
 [`STANDING_RULES.md`](STANDING_RULES.md) and [`CLAUDE.md`](CLAUDE.md).
 
-Last updated: 2026-10-26 (branch consolidation)
+Last updated: 2026-10-26 (MKVToolNix macOS fix)
 
 ---
 
 ## Where we are right now
 
-- **Working branch:** `claude/nifty-shannon-wla302`, started from `main` at
-  `18e4eb3` (2026-10-25). It is the **single** work-in-progress branch and
-  targets `alpha` through one pull request.
+- **Working branch:** `claude/great-galileo-116la9`, started from `alpha` at
+  `bf5667b` (after PR #27, the consolidated WIP branch
+  `claude/nifty-shannon-wla302`, was merged into `alpha`). It targets `alpha`
+  through one pull request carrying the `update-tools` label (so CI runs the
+  full build as a test, without publishing a release).
 - **`alpha` branch:** created from `main` on 2026-10-26 (it did not exist
   before). Pushes to `alpha` do **not** cut a release — only pushes to `main`
   do. Getting the work released means a later `alpha` → `main` merge.
@@ -50,12 +52,41 @@ Last updated: 2026-10-26 (branch consolidation)
   kept as fallback), and each macOS binary is checked to be the right
   architecture before packaging.
 
+### MKVToolNix macOS fix (this branch)
+
+- **Problem:** `mkvtoolnix-macos-*.tar.gz` had been missing from every release
+  since at least 2026-09-01, yet CI stayed green. The old URL
+  `mkvtoolnix.download/macos/MKVToolNix-<ver>.dmg` now returns an empty file,
+  and the step's "no binaries found" branch exited 0.
+- **Upstream did NOT drop macOS.** A pause was announced in April 2026, but
+  community maintainers (corticalcode, touchstone64) restored official,
+  notarised DMGs from v98/v99. They live at
+  `macos/releases/<ver>/MKVToolNix-<ver>-<rev>-{arm64,x86_64,universal}.dmg`
+  with `.sha256` files. `<rev>` is a repackaging number (starts at 1).
+- **Why a new macOS job:** the DMGs are LZFSE-compressed APFS images. 7-Zip
+  23.01, bsdtar and dmg2img on Linux can't read them (checked locally against
+  an equivalent community DMG). The new `mkvtoolnix-macos` job runs on
+  `macos-latest` and uses `hdiutil`.
+- **What it does:** finds the newest DMG revision, checks SHA-256, copies
+  mkvmerge/mkvextract/mkvpropedit/mkvinfo plus any bundled libraries they load,
+  checks the CPU type, then runs `--version` from a clean unpack (x86_64 through
+  Rosetta 2). Any failure gives an `::error::` annotation plus a run-summary
+  line, and no asset. The step keeps `continue-on-error`, so one missing asset
+  never blocks the rest of the release.
+- **Assets:** `mkvtoolnix-macos-aarch64` (now native; it used to hold the
+  Intel build) and new `mkvtoolnix-macos-x86_64`.
+- **Still to check on the PR run:** the step log, not just the job status. If
+  a library loads from `Contents/Frameworks` (outside `Contents/MacOS`), the
+  step fails on purpose with a clear message and the packaging layout needs
+  adjusting.
+
 ## Task queue
 
 | # | Task | Status |
 | - | ---- | ------ |
 | 1 | Consolidate old branches + PRs #25/#26 into one WIP branch | ✅ Done |
-| 2 | Open the consolidated PR to `alpha`, get CI green, merge | ⏳ In progress |
+| 2 | Open the consolidated PR to `alpha`, get CI green, merge | ✅ Done (PR #27 merged) |
+| 2a | MKVToolNix macOS: restore the asset, make failures loud | ⏳ PR to `alpha` open, checking CI logs |
 | 3 | GPL disc tools: cdrdao, cdparanoia, wodim (Linux), one at a time, each confirmed on CI | ⏳ Not started |
 | 4 | GPL disc tools: macOS builds (reuse the `build-tracing-tools` macOS pattern) | ⏳ Not started |
 | 5 | Thorough documentation pass (CHANGELOG history still says "monthly schedule") | ⏳ Not started |
@@ -67,7 +98,7 @@ upstream version checking — largely done by the `check-versions` job).
 
 ## How to pick up in a fresh session
 
-1. `git fetch origin && git checkout claude/nifty-shannon-wla302 && git pull`
+1. `git fetch origin && git checkout claude/great-galileo-116la9 && git pull`
    (or, once merged, start a new branch from `alpha`).
 2. Read this file, then `STANDING_RULES.md`, then `CLAUDE.md`.
 3. Carry on with the task queue from the first unfinished item.

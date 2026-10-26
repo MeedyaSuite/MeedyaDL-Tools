@@ -57,7 +57,7 @@ This repository serves as a **mirror** for external tool binaries that MeedyaDL 
 | VTracer | Y**** | Y**** | — | — | — | Y**** |
 | ddrescue | Y**** | — | — | — | — | — |
 
-**Y** = pre-built binary &nbsp; **Y*** = Perl script (requires Perl runtime) &nbsp; **Y**** = Windows installer &nbsp; **Y***** = x86_64 via Rosetta 2 &nbsp; **Y****** = compiled from source; macOS ships separate aarch64 + x86_64 assets (no universal binary is produced in this repo) &nbsp; **—** = not available
+**Y** = pre-built binary &nbsp; **Y*** = Perl script (requires Perl runtime) &nbsp; **Y**** = Windows installer &nbsp; **Y***** = native Apple Silicon binary from the official upstream DMG; a separate Intel (`macos-x86_64`) asset is also published &nbsp; **Y****** = compiled from source; macOS ships separate aarch64 + x86_64 assets (no universal binary is produced in this repo) &nbsp; **—** = not available
 
 ## Asset Naming Convention
 
