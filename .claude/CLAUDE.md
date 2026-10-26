@@ -1,5 +1,10 @@
 # MeedyaDL-Tools — Claude Context
 
+> **Start here:** read [`HANDOFF.md`](HANDOFF.md) (current state of play) and
+> [`STANDING_RULES.md`](STANDING_RULES.md) (how we work — plain English, handoff
+> kept up to date, Opus to plan / Sonnet-Haiku to build, Codex review loop, one
+> working branch, AI-tool fallback). Both apply to every session.
+
 ## Purpose
 
 Mirror repository for external tool binaries used by [MeedyaDL](https://github.com/MWBMPartners/MeedyaDL). No application source code — only CI workflows, documentation, and configuration.
@@ -7,7 +12,7 @@ Mirror repository for external tool binaries used by [MeedyaDL](https://github.c
 ## Architecture
 
 - All tool binaries live in GitHub Release assets (date-stamped + `latest` tag), not in the git tree
-- `populate.yml` is the core file (~1340 lines) — 4-job workflow:
+- `populate.yml` is the core file (~1580 lines) — 4-job workflow:
   1. **check-versions** — compares upstream versions against `versions.json`; on schedule only rebuilds changed tools; on push/dispatch forces full rebuild
   2. **download-binaries** — downloads pre-built tools from upstream (per-tool `if:` conditions skip unchanged tools)
   3. **build-python-tools** — builds Votify/gytmdl/gamdl/OF-Scraper via PyInstaller across 4 platform matrix runners
@@ -56,3 +61,6 @@ FFmpeg, yt-dlp, mp4decrypt, MP4Box, N_m3u8DL-RE, aria2c, fpcalc, get_iplayer, Vo
 | `DEV_Status.md` | Build status and known limitations |
 | `LICENSE.md` | MIT for repo + per-tool upstream licenses |
 | `.github/dependabot.yml` | GitHub Actions version updates (monthly) |
+| `.claude/HANDOFF.md` | Current state of play — update as you go |
+| `.claude/STANDING_RULES.md` | Standing rules for all AI tools |
+| `.OpenAI/AGENTS.md` | Codex/OpenAI context (points to the same rules) |
