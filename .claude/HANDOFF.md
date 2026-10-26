@@ -3,11 +3,25 @@
 **Read this first in any new session.** Then read
 [`STANDING_RULES.md`](STANDING_RULES.md) and [`CLAUDE.md`](CLAUDE.md).
 
-Last updated: 2026-10-26 (MKVToolNix Linux packaging fix)
+Last updated: 2026-10-26 (MKVToolNix Linux + macOS fixes consolidated)
 
 ---
 
-## Current task — MKVToolNix Linux asset (branch `claude/kind-goodall-ygobby`)
+## Current task — consolidated MKVToolNix Linux + macOS PR
+
+- **Branch:** `claude/kind-goodall-ygobby`, targeting `alpha` through **one**
+  PR with the `update-tools` label. On 2026-10-26 the owner asked for PR #28
+  (macOS, branch `claude/great-galileo-116la9`) and PR #29 (Linux, this
+  branch) to be merged into a single PR to avoid merge races; both were closed
+  in favour of the consolidated PR and #28's branch was deleted (its commit
+  `2e028d5` is merged into this branch). Plan: get every check green, merge
+  into `alpha`, then watch the Actions runs that follow.
+- **Conflict resolution:** the Linux AppImage step keeps this branch's version
+  (it already fails loudly); the macOS job, Windows `::warning::`, and
+  `upload-release` wiring come from #28; docs merged by hand (DEV_Status now
+  has separate Linux and macOS rows).
+
+### MKVToolNix Linux asset
 
 - **Problem:** `mkvtoolnix-linux-x86_64.tar.gz` held only the four programs
   copied out of the AppImage. They need Qt 6, Boost, FLAC, cmark, libdvdread,
@@ -51,14 +65,8 @@ Last updated: 2026-10-26 (MKVToolNix Linux packaging fix)
   unpack all four tools print `v103.0 ('The Darkness') 64-bit`, also through
   a symlink. Tarball 24 MB; needs glibc ≥ 2.28 and GLIBCXX_3.4.21 (README +
   DEV_Status updated).
-- **Overlap with PR #28** (open, also targets `alpha`): it changes the same
-  Linux step's "no binaries" branch to `::error::` + `exit 1`. Whichever PR
-  merges second takes this branch's version of that step.
-- **Status:** see the task queue row 7 below.
 
-- **Working branch:** `claude/nifty-shannon-wla302`, started from `main` at
-  `18e4eb3` (2026-10-25). It is the **single** work-in-progress branch and
-  targets `alpha` through one pull request.
+## Background
 - **`alpha` branch:** created from `main` on 2026-10-26 (it did not exist
   before). Pushes to `alpha` do **not** cut a release — only pushes to `main`
   do. Getting the work released means a later `alpha` → `main` merge.
@@ -97,17 +105,47 @@ Last updated: 2026-10-26 (MKVToolNix Linux packaging fix)
   kept as fallback), and each macOS binary is checked to be the right
   architecture before packaging.
 
+### MKVToolNix macOS fix (from PR #28, now in the consolidated branch)
+
+- **Problem:** `mkvtoolnix-macos-*.tar.gz` had been missing from every release
+  since at least 2026-09-01, yet CI stayed green. The old URL
+  `mkvtoolnix.download/macos/MKVToolNix-<ver>.dmg` now returns an empty file,
+  and the step's "no binaries found" branch exited 0.
+- **Upstream did NOT drop macOS.** A pause was announced in April 2026, but
+  community maintainers (corticalcode, touchstone64) restored official,
+  notarised DMGs from v98/v99. They live at
+  `macos/releases/<ver>/MKVToolNix-<ver>-<rev>-{arm64,x86_64,universal}.dmg`
+  with `.sha256` files. `<rev>` is a repackaging number (starts at 1).
+- **Why a new macOS job:** the DMGs are LZFSE-compressed APFS images. 7-Zip
+  23.01, bsdtar and dmg2img on Linux can't read them (checked locally against
+  an equivalent community DMG). The new `mkvtoolnix-macos` job runs on
+  `macos-latest` and uses `hdiutil`.
+- **What it does:** finds the newest DMG revision, checks SHA-256, copies
+  mkvmerge/mkvextract/mkvpropedit/mkvinfo plus any bundled libraries they load,
+  checks the CPU type, then runs `--version` from a clean unpack (x86_64 through
+  Rosetta 2). Any failure gives an `::error::` annotation plus a run-summary
+  line, and no asset. The step keeps `continue-on-error`, so one missing asset
+  never blocks the rest of the release.
+- **Assets:** `mkvtoolnix-macos-aarch64` (now native; it used to hold the
+  Intel build) and new `mkvtoolnix-macos-x86_64`.
+- **Still to check on the PR run:** the step log, not just the job status. If
+  a library loads from `Contents/Frameworks` (outside `Contents/MacOS`), the
+  step fails on purpose with a clear message and the packaging layout needs
+  adjusting.
+
 ## Task queue
 
 | # | Task | Status |
 | - | ---- | ------ |
 | 1 | Consolidate old branches + PRs #25/#26 into one WIP branch | ✅ Done |
-| 2 | Open the consolidated PR to `alpha`, get CI green, merge | ⏳ In progress |
+| 2 | Open the consolidated PR to `alpha`, get CI green, merge | ✅ Done (PR #27 merged) |
+| 2a | MKVToolNix macOS: restore the asset, make failures loud (was PR #28) | ⏳ In the consolidated PR; macOS step logs still to check |
 | 3 | GPL disc tools: cdrdao, cdparanoia, wodim (Linux), one at a time, each confirmed on CI | ⏳ Not started |
 | 4 | GPL disc tools: macOS builds (reuse the `build-tracing-tools` macOS pattern) | ⏳ Not started |
 | 5 | Thorough documentation pass (CHANGELOG history still says "monthly schedule") | ⏳ Not started |
 | 6 | Device-wide AI fallback rule on the owner's own machines (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`) | ❓ Owner to do locally |
-| 7 | MKVToolNix Linux asset: bundle libraries + launchers, clean-unpack smoke test (branch `claude/kind-goodall-ygobby`) | ✅ Done on CI (run 3); PR #29 waiting on review/merge |
+| 7 | MKVToolNix Linux asset: bundle libraries + launchers, clean-unpack smoke test (was PR #29) | ✅ Passed on CI (run 40334308316); now in the consolidated PR |
+| 8 | Consolidated PR (#28 + #29) → green → merge to `alpha` → watch post-merge Actions | ⏳ In progress |
 
 Open issues: #19 (publish SHA256SUMS — done on `main` by PR #20, could be
 closed), #17 (add rclone), #16 (MeedyaSuite org secrets), #8 (automatic
@@ -115,7 +153,7 @@ upstream version checking — largely done by the `check-versions` job).
 
 ## How to pick up in a fresh session
 
-1. `git fetch origin && git checkout claude/nifty-shannon-wla302 && git pull`
+1. `git fetch origin && git checkout claude/great-galileo-116la9 && git pull`
    (or, once merged, start a new branch from `alpha`).
 2. Read this file, then `STANDING_RULES.md`, then `CLAUDE.md`.
 3. Carry on with the task queue from the first unfinished item.

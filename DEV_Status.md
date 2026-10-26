@@ -27,7 +27,7 @@ Current build status and tool availability for MeedyaDL-Tools.
 | Wrapper | OK | — | — | — | — | — | — |
 | MediaInfo | OK | OK | — | — | OK | OK | OK |
 | OF-Scraper | OK | OK | — | — | OK | — | OK |
-| MKVToolNix | OK***** | — | — | — | OK | — | OK***** |
+| MKVToolNix | OK | — | — | — | OK | — | OK***** |
 | potrace | OK* | OK* | — | — | — | — | OK* |
 | vtracer | OK* | OK* | — | — | — | — | OK* |
 | ddrescue | OK* | — | — | — | — | — | — |
@@ -39,7 +39,7 @@ Current build status and tool availability for MeedyaDL-Tools.
 - **OK**** = Installed via Homebrew in CI
 - **OK***** = Perl script (requires Perl runtime on target)
 - **OK****** = Windows installer (.exe)
-- **OK******* = x86_64 binary (runs via Rosetta 2 on Apple Silicon)
+- **OK******* = Native Apple Silicon binary; a separate macOS x86_64 (Intel) asset is also published
 - **—** = Not available (no upstream binary, cannot cross-compile)
 
 ## Known Limitations
@@ -53,7 +53,6 @@ Current build status and tool availability for MeedyaDL-Tools.
 | **Linux armhf** | Raspberry Pi 3 (32-bit ARM) has minimal support | Only get_iplayer (Perl script) available |
 | **Wrapper** | Only supports Linux x86_64 | C/C++ project with no cross-platform releases |
 | **MKVToolNix (Linux aarch64)** | No portable aarch64 build | AppImage only available for x86_64 |
-| **MKVToolNix (macOS)** | x86_64 only, runs via Rosetta 2 | Developer ending macOS binary support H2 2026 |
 
 ### Build Notes
 
@@ -66,7 +65,8 @@ Current build status and tool availability for MeedyaDL-Tools.
 | **FFmpeg (macOS)** | arm64 from osxexperts.net; x86_64 from ffmpeg.martin-riedl.de (evermeet.cx, the previous source, returns 410 Gone since 2026-10-13). ffmpeg/ffprobe failures fail the build; ffplay is optional |
 | **MP4Box** | Extracted from platform-specific installers (.deb, .exe, .pkg) |
 | **MediaInfo** | Binaries from mediaarea.net (not GitHub releases); macOS DMG extracted via 7z |
-| **MKVToolNix** | Binaries from mkvtoolnix.download; Linux via AppImage extraction — the unmodified programs go in `libexec/` with the AppImage's libraries in `lib/` and launcher scripts at the root (needs glibc ≥ 2.28 plus the host's libstdc++/zlib/GMP), and `--version` is run from a clean unpack before the asset is kept (before 2026-10-26 the Linux asset shipped the programs alone and could not start outside the AppImage); macOS x86_64 only (Rosetta); macOS support ending H2 2026 |
+| **MKVToolNix** | Binaries from mkvtoolnix.download; Linux via AppImage extraction — the unmodified programs go in `libexec/` with the AppImage's libraries in `lib/` and launcher scripts at the root (needs glibc ≥ 2.28 plus the host's libstdc++/zlib/GMP), and `--version` is run from a clean unpack before the asset is kept (before 2026-10-26 the Linux asset shipped the programs alone and could not start outside the AppImage) |
+| **MKVToolNix (macOS)** | Official notarised DMGs (`macos/releases/<ver>/MKVToolNix-<ver>-<rev>-{arm64,x86_64}.dmg`, built for upstream by community maintainers since v98/v99 after a brief pause announced in April 2026). Packaged in the `mkvtoolnix-macos` job on `macos-latest` because the DMGs are LZFSE-compressed APFS images Linux tools can't open; SHA-256 checked, CLI tools copied with any bundled libraries, smoke-tested from a clean unpack. Failure = `::error::` annotation, no asset |
 | **potrace/vtracer (macOS)** | Compiled on `macos-latest`; x86_64 cross-built from the arm64 host; two thin assets, lipo'd by the consumer |
 
 ## Version Tracking

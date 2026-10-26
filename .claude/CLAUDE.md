@@ -12,12 +12,13 @@ Mirror repository for external tool binaries used by [MeedyaDL](https://github.c
 ## Architecture
 
 - All tool binaries live in GitHub Release assets (date-stamped + `latest` tag), not in the git tree
-- `populate.yml` is the core file (~1860 lines) — 5-job workflow:
+- `populate.yml` is the core file (~2040 lines) — 6-job workflow:
   1. **check-versions** — compares upstream versions against `versions.json`; on schedule only rebuilds changed tools; on push/dispatch forces full rebuild
   2. **download-binaries** — downloads pre-built tools from upstream (per-tool `if:` conditions skip unchanged tools)
   3. **build-python-tools** — builds Votify/gytmdl/gamdl/OF-Scraper via PyInstaller across 4 platform matrix runners
   4. **build-tracing-tools** — compiles potrace + vtracer from source (Linux x86_64/aarch64, macOS aarch64 + cross-built x86_64); version-pinned via `env:`
-  5. **upload-release** — carries forward unchanged assets from previous release, creates date-stamped release + updates `latest` tag, auto-commits `versions.json`
+  5. **mkvtoolnix-macos** — packages MKVToolNix from the official macOS DMGs (arm64 + x86_64 matrix on `macos-latest`; hdiutil, because the DMGs are LZFSE/APFS). Failures raise `::error::` annotations but keep `continue-on-error`
+  6. **upload-release** — carries forward unchanged assets from previous release, creates date-stamped release + updates `latest` tag, auto-commits `versions.json`
 - `versions.json` tracks last-packaged upstream versions (auto-committed by CI with `[skip ci]`)
 
 ## Tools Mirrored (19)

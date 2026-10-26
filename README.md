@@ -60,7 +60,7 @@ This repository serves as a **mirror** for external tool binaries that MeedyaDL 
 **Y** = pre-built binary
 **Y*** = Perl script (requires Perl runtime)
 **Y**** = Windows installer
-**Y***** = x86_64 via Rosetta 2
+**Y***** = native Apple Silicon binary from the official upstream DMG; a separate Intel (`macos-x86_64`) asset is also published
 **Y****** = compiled from source; macOS ships separate aarch64 + x86_64 assets (no universal binary is produced in this repo)
 **—** = not available
 

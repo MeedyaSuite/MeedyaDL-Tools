@@ -20,3 +20,7 @@ Short-lived notes for Codex. The authoritative state is always
   a Codex review of the "MKVToolNix: Linux x86_64 (AppImage)" step.
   CI confirmed (run 40334308316): `--version` → v103.0 from a clean unpack;
   `libgmp.so.10` treated as host-provided (the AppImage does not bundle it).
+- 2026-10-26: MKVToolNix macOS fix on `claude/great-galileo-116la9` (from
+  `alpha`): new `mkvtoolnix-macos` job in `populate.yml` packages the official
+  arm64 + x86_64 DMGs with hdiutil. Ready for a Codex review of that job's shell
+  script (dependency copying, error handling via the EXIT trap).
