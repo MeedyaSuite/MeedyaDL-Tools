@@ -26,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 - **CI schedule**: daily (06:00 UTC) smart rebuild — only tools whose upstream version changed are rebuilt
 - **macOS FFmpeg**: a failure to fetch ffmpeg/ffprobe now fails the build instead of silently shipping a release without them; ffplay stays optional
+- **macOS FFmpeg x86_64 source**: switched from evermeet.cx (HTTP 410 Gone since 2026-10-13 — releases since then had been carrying forward stale, mismatched macOS ffmpeg/ffprobe/ffplay) to ffmpeg.martin-riedl.de, with evermeet.cx kept as a fallback and a Mach-O architecture check on every macOS binary
 - **Release assets**: `.tar.xz`, `.tar.lz` and `.tar.bz2` files are no longer silently dropped when assembling a release
 - **populate.yml**: Complete rewrite from single-job to multi-job architecture
 - **README.md**: Expanded with full tool listing, platform matrix, and usage instructions

@@ -42,6 +42,13 @@ Last updated: 2026-10-26 (branch consolidation)
 - New job uses `actions/checkout@v7.0.1`, matching the rest of the workflow.
 - Docs: README, DEV_Status (table column count fixed), LICENSE.md, CHANGELOG,
   CLAUDE.md updated for the 3 new tools.
+- **macOS Intel FFmpeg source replaced.** The first CI run of the consolidated
+  PR showed evermeet.cx returning HTTP 410 (Gone). Checking `main`'s logs: it has
+  failed every run since 2026-10-13, but `main` hid it (`continue-on-error`) and
+  each release carried forward old macOS ffmpeg/ffprobe/ffplay copies from
+  different dates. x86_64 now comes from ffmpeg.martin-riedl.de (evermeet.cx
+  kept as fallback), and each macOS binary is checked to be the right
+  architecture before packaging.
 
 ## Task queue
 

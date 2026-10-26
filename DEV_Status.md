@@ -63,7 +63,7 @@ Current build status and tool availability for MeedyaDL-Tools.
 | **aria2c (macOS)** | Installed via Homebrew; dynamically linked |
 | **Python tools** | Built with PyInstaller `--onefile`; includes Votify, gytmdl, gamdl, OF-Scraper |
 | **get_iplayer** | Perl script on Unix (requires `perl`); Windows installer bundles Perl |
-| **FFmpeg (macOS)** | evermeet.cx provides x86_64 binary; runs via Rosetta 2 on Apple Silicon |
+| **FFmpeg (macOS)** | arm64 from osxexperts.net; x86_64 from ffmpeg.martin-riedl.de (evermeet.cx, the previous source, returns 410 Gone since 2026-10-13). ffmpeg/ffprobe failures fail the build; ffplay is optional |
 | **MP4Box** | Extracted from platform-specific installers (.deb, .exe, .pkg) |
 | **MediaInfo** | Binaries from mediaarea.net (not GitHub releases); macOS DMG extracted via 7z |
 | **MKVToolNix** | Binaries from mkvtoolnix.download; Linux via AppImage extraction; macOS x86_64 only (Rosetta); macOS support ending H2 2026 |

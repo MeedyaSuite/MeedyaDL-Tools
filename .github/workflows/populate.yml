@@ -177,7 +177,7 @@ jobs:
 
           # FFmpeg: multi-source, so the change signal must track BOTH.
           #   - Linux / Windows : BtbN/FFmpeg-Builds rolling 'latest' (published_at)
-          #   - macOS x86_64     : evermeet.cx (refreshed alongside the BtbN signal)
+          #   - macOS x86_64     : ffmpeg.martin-riedl.de (refreshed alongside the BtbN signal)
           #   - macOS arm64      : osxexperts.net static builds — own release cadence,
           #                        tracked here so Apple-Silicon ffmpeg refreshes on time.
           FF_CURRENT=$(echo "$VERSIONS" | jq -r '."ffmpeg" // ""')
@@ -381,7 +381,8 @@ jobs:
       # FFmpeg (+ ffprobe + ffplay)
       # Source: BtbN/FFmpeg-Builds (Linux/Windows);
       #         macOS arm64  = osxexperts.net static builds (real Apple Silicon)
-      #         macOS x86_64 = evermeet.cx static builds (Intel)
+      #         macOS x86_64 = ffmpeg.martin-riedl.de static builds (Intel);
+      #                        evermeet.cx kept as a fallback (410 Gone since 2026-10-13)
       # ffprobe is required by downstream MeedyaConverter; ffplay included too.
       # =============================================================
 
@@ -450,14 +451,34 @@ jobs:
           fi
           echo "→ osxexperts Apple-Silicon version token: ${ARM_VER}"
 
+          # package_macos <tool> <arch> <url> [fallback-url ...]
+          # Tries each URL in turn; the first that yields a Mach-O binary of the
+          # right architecture wins. Returns non-zero if none does.
           package_macos() {
-            local tool="$1" arch="$2" url="$3"
-            echo "→ ${tool} macOS ${arch}  (${url})"
-            rm -rf work/ex work/pk; mkdir -p work/ex work/pk
-            curl -fL --retry 5 --retry-delay 3 -A "$UA" -o work/dl.zip "$url"
-            unzip -q work/dl.zip -d work/ex
-            local bin; bin="$(find work/ex -type f -name "$tool" | head -1)"
-            if [ -z "$bin" ]; then echo "✗ ${tool} not found in ${url}" >&2; return 1; fi
+            local tool="$1" arch="$2"; shift 2
+            local macho_arch="$arch"; [ "$arch" = "aarch64" ] && macho_arch="arm64"
+            local url bin=""
+            for url in "$@"; do
+              echo "→ ${tool} macOS ${arch}  (${url})"
+              rm -rf work/ex work/pk work/dl.zip; mkdir -p work/ex work/pk
+              if ! curl -fL --retry 5 --retry-delay 3 -A "$UA" -o work/dl.zip "$url"; then
+                echo "⚠ ${tool} macOS ${arch}: download failed from ${url}"; continue
+              fi
+              if ! unzip -q work/dl.zip -d work/ex; then
+                echo "⚠ ${tool} macOS ${arch}: not a valid zip from ${url}"; continue
+              fi
+              bin="$(find work/ex -type f -name "$tool" | head -1)"
+              if [ -z "$bin" ]; then
+                echo "⚠ ${tool} not found in ${url}"; continue
+              fi
+              # Guard against a source silently serving the wrong platform/arch.
+              if ! file "$bin" | grep -q "Mach-O.*${macho_arch}"; then
+                echo "⚠ ${tool} from ${url} is not a Mach-O ${macho_arch} binary: $(file -b "$bin")"
+                bin=""; continue
+              fi
+              break
+            done
+            if [ -z "$bin" ]; then echo "✗ ${tool} macOS ${arch}: no source succeeded" >&2; return 1; fi
             cp "$bin" "work/pk/${tool}"; chmod +x "work/pk/${tool}"
             tar -czf "staging/${tool}-macos-${arch}.tar.gz" -C work/pk "$tool"
             rm -rf work/ex work/pk work/dl.zip
@@ -468,15 +489,19 @@ jobs:
           for tool in ffmpeg ffprobe; do
             # arm64 (Apple Silicon) — osxexperts.net static builds (real arm64)
             package_macos "$tool" "aarch64" "https://www.osxexperts.net/${tool}${ARM_VER}arm.zip"
-            # x86_64 (Intel) — evermeet.cx static builds
-            package_macos "$tool" "x86_64"  "https://evermeet.cx/ffmpeg/getrelease/${tool}/zip"
+            # x86_64 (Intel) — martin-riedl.de static release builds; evermeet.cx fallback
+            package_macos "$tool" "x86_64" \
+              "https://ffmpeg.martin-riedl.de/redirect/latest/macos/amd64/release/${tool}.zip" \
+              "https://evermeet.cx/ffmpeg/getrelease/${tool}/zip"
           done
 
           # ffplay — optional (drives only the in-app preview). Best-effort: run
           # in a subshell so a failure can't trip `set -e` in the parent.
           ( package_macos ffplay aarch64 "https://www.osxexperts.net/ffplay${ARM_VER}arm.zip" ) \
             || echo "⚠ ffplay macOS arm64 unavailable (optional) — skipped"
-          ( package_macos ffplay x86_64  "https://evermeet.cx/ffmpeg/getrelease/ffplay/zip" ) \
+          ( package_macos ffplay x86_64 \
+              "https://ffmpeg.martin-riedl.de/redirect/latest/macos/amd64/release/ffplay.zip" \
+              "https://evermeet.cx/ffmpeg/getrelease/ffplay/zip" ) \
             || echo "⚠ ffplay macOS x86_64 unavailable (optional) — skipped"
 
       # =============================================================
