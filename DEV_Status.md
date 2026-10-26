@@ -94,3 +94,36 @@ for current versions.
 | MediaInfo | [MediaArea/MediaInfo](https://github.com/MediaArea/MediaInfo) | Semver releases (binaries on mediaarea.net) |
 | OF-Scraper | [datawhores/OF-Scraper](https://github.com/datawhores/OF-Scraper) | PyPI releases |
 | MKVToolNix | [mkvtoolnix.download](https://mkvtoolnix.download/) | Semver releases (binaries on mkvtoolnix.download) |
+
+---
+
+## GPL optical-disc tools (branch `feat/gpl-disc-tools`, 2026-09-02)
+
+Feeds MeedyaConverter's disc-backup-imaging feature (MeedyaConverter#492/#495),
+Direct distribution only, per that repo's DR-0001. All four tools are pinned in
+`versions.json` and the `env:` block of `populate.yml`.
+
+**Done on this branch:**
+- `ddrescue` (GPLv3) — Linux x86_64 build **from source**, with the source
+  tarball archived to the release as `ddrescue-<ver>.src.tar.lz`. This is the
+  working template: fetch upstream source → build → stage binary → stage
+  source. It is portable, DRM-neutral, and generally useful for any
+  block-device imaging.
+
+**Follow-ups (same pattern; each needs this repo's CI to validate the build):**
+- `cdrdao` (GPLv2), `cdparanoia` (GPLv2), `wodim` / cdrkit (GPLv2) — Linux
+  builds. Their builds are finicky (autotools of varying vintage, external
+  deps: libao/libvorbis/libmad for cdrdao) and were not authored blind; add
+  them one at a time and confirm each on CI.
+- **macOS-universal (arm64 + x86_64) builds.** This workflow currently
+  *downloads* prebuilt macOS binaries and has **no macOS compile runner**.
+  Building our own for macOS (per DR-0001) needs a new `runs-on: macos-latest`
+  job that compiles + `lipo`-combines per-arch and uploads to the same release,
+  mirroring how ffmpeg's universal binary is assembled. That is the largest
+  remaining piece.
+- A per-tool upstream version-check hook (these are pinned via `env:` for now,
+  so they rebuild every run rather than on upstream change).
+
+**Do not** treat the disc-tool supply chain as complete until the macOS builds
+land and each tool's CI is green. The MeedyaConverter side (App-Store exclusion
+guards, DR-0001) is already merged on its `wip/alpha-consolidation` branch.
