@@ -29,6 +29,9 @@ This repository serves as a **mirror** for external tool binaries that MeedyaDL 
 | **MediaInfo** | Media file metadata analysis | [MediaArea/MediaInfo](https://github.com/MediaArea/MediaInfo) | BSD-2-Clause |
 | **OF-Scraper** | OnlyFans content downloader | [datawhores/OF-Scraper](https://github.com/datawhores/OF-Scraper) | MIT |
 | **MKVToolNix** | MKV muxing/editing suite | [mkvtoolnix.download](https://mkvtoolnix.download/) | GPL v2 |
+| **potrace** | Bitmap → vector tracing (outline / monochrome) | [potrace.sourceforge.net](https://potrace.sourceforge.net/) | GPL v2+ |
+| **VTracer** | Raster → SVG colour tracing | [visioncortex/vtracer](https://github.com/visioncortex/vtracer) | MIT / Apache-2.0 |
+| **GNU ddrescue** | Data recovery / block-device imaging | [gnu.org/software/ddrescue](https://www.gnu.org/software/ddrescue/) | GPL v3 |
 
 ## Platform Support
 
@@ -50,8 +53,11 @@ This repository serves as a **mirror** for external tool binaries that MeedyaDL 
 | MediaInfo | Y | Y | — | Y | Y | Y |
 | OF-Scraper | Y | Y | — | Y | — | Y |
 | MKVToolNix | Y | — | — | Y | — | Y*** |
+| potrace | Y**** | Y**** | — | — | — | Y**** |
+| VTracer | Y**** | Y**** | — | — | — | Y**** |
+| ddrescue | Y**** | — | — | — | — | — |
 
-**Y** = pre-built binary &nbsp; **Y*** = Perl script (requires Perl runtime) &nbsp; **Y**** = Windows installer &nbsp; **Y***** = x86_64 via Rosetta 2 &nbsp; **—** = not available
+**Y** = pre-built binary &nbsp; **Y*** = Perl script (requires Perl runtime) &nbsp; **Y**** = Windows installer &nbsp; **Y***** = x86_64 via Rosetta 2 &nbsp; **Y****** = compiled from source; macOS ships separate aarch64 + x86_64 assets (no universal binary is produced in this repo) &nbsp; **—** = not available
 
 ## Asset Naming Convention
 
@@ -61,10 +67,15 @@ This repository serves as a **mirror** for external tool binaries that MeedyaDL 
 
 | Component | Values |
 | --------- | ------ |
-| `tool_id` | `ffmpeg`, `yt-dlp`, `mp4decrypt`, `mp4box`, `nm3u8dlre`, `aria2c`, `fpcalc`, `get_iplayer`, `votify`, `gytmdl`, `gamdl`, `amdecrypt`, `wrapper`, `mediainfo`, `ofscraper`, `mkvtoolnix` |
+| `tool_id` | `ffmpeg`, `yt-dlp`, `mp4decrypt`, `mp4box`, `nm3u8dlre`, `aria2c`, `fpcalc`, `get_iplayer`, `votify`, `gytmdl`, `gamdl`, `amdecrypt`, `wrapper`, `mediainfo`, `ofscraper`, `mkvtoolnix`, `potrace`, `vtracer`, `ddrescue` |
 | `os` | `linux`, `windows`, `macos` |
 | `arch` | `x86_64`, `x86`, `aarch64`, `armhf` |
 | `ext` | `.tar.gz` (Linux/macOS), `.zip` (Windows), `.exe` (installers) |
+
+Tools compiled from source in CI (potrace, VTracer, ddrescue) also ship the
+exact source they were built from as `{tool_id}-{version}.src.{tar.gz,tar.lz}`
+(e.g. `potrace-1.16.src.tar.gz`, `ddrescue-1.28.src.tar.lz`) — for the GPL
+tools this is their corresponding source.
 
 ## Releases
 

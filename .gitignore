@@ -35,6 +35,9 @@ npm-debug.log*
 # === AI ===
 .claude/*
 !.claude/CLAUDE.md
+!.claude/HANDOFF.md
+!.claude/STANDING_RULES.md
+!.claude/settings.json
 .open/
 .chatgpt/
 .codex/

@@ -52,10 +52,15 @@ The binaries distributed via this repository's GitHub Releases are redistributed
 | **MediaInfo** | MediaInfo | BSD-2-Clause | [MediaArea/MediaInfo](https://github.com/MediaArea/MediaInfo) |
 | **OF-Scraper** | OF-Scraper | MIT | [datawhores/OF-Scraper](https://github.com/datawhores/OF-Scraper) |
 | **MKVToolNix** | MKVToolNix | GPL v2 | [mkvtoolnix.download](https://mkvtoolnix.download/) |
+| **potrace** | Potrace | GPL v2+ | [potrace.sourceforge.net](https://potrace.sourceforge.net/) |
+| **VTracer** | VTracer | MIT / Apache-2.0 | [visioncortex/vtracer](https://github.com/visioncortex/vtracer) |
+| **GNU ddrescue** | GNU ddrescue | GPL v3 | [gnu.org/software/ddrescue](https://www.gnu.org/software/ddrescue/) |
 
 ### License Compliance Notes
 
 - **GPL v2+ tools** (FFmpeg, mp4decrypt, aria2c, MKVToolNix): Source code is available at the upstream repositories linked above. These binaries are unmodified redistributions.
+- **Compiled-from-source GPL tools** (potrace, GNU ddrescue): Built unmodified from upstream source in CI. The exact source tarball used for each build is attached to the same GitHub Release (`potrace-<ver>.src.tar.gz`, `ddrescue-<ver>.src.tar.lz`), so the corresponding source is available from this repository directly.
+- **MIT / Apache-2.0 tools** (VTracer): Compiled unmodified from upstream source; its `LICENSE` file ships inside each archive.
 - **LGPL v2.1 tools** (MP4Box, fpcalc): Dynamically linked where applicable. Source code available at upstream repositories.
 - **BSD-2-Clause tools** (MediaInfo): Very permissive; redistribution requires retaining the copyright notice and disclaimer.
 - **Unlicensed tools** (yt-dlp): Distributed under the Unlicense, placing the work in the public domain.

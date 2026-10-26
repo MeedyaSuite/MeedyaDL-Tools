@@ -28,6 +28,9 @@ Current build status and tool availability for MeedyaDL-Tools.
 | MediaInfo | OK | OK | — | — | OK | OK | OK |
 | OF-Scraper | OK | OK | — | — | OK | — | OK |
 | MKVToolNix | OK***** | — | — | — | OK | — | OK***** |
+| potrace | OK* | OK* | — | — | — | — | OK* |
+| vtracer | OK* | OK* | — | — | — | — | OK* |
+| ddrescue | OK* | — | — | — | — | — | — |
 
 **Legend:**
 
@@ -60,10 +63,11 @@ Current build status and tool availability for MeedyaDL-Tools.
 | **aria2c (macOS)** | Installed via Homebrew; dynamically linked |
 | **Python tools** | Built with PyInstaller `--onefile`; includes Votify, gytmdl, gamdl, OF-Scraper |
 | **get_iplayer** | Perl script on Unix (requires `perl`); Windows installer bundles Perl |
-| **FFmpeg (macOS)** | evermeet.cx provides x86_64 binary; runs via Rosetta 2 on Apple Silicon |
+| **FFmpeg (macOS)** | arm64 from osxexperts.net; x86_64 from ffmpeg.martin-riedl.de (evermeet.cx, the previous source, returns 410 Gone since 2026-10-13). ffmpeg/ffprobe failures fail the build; ffplay is optional |
 | **MP4Box** | Extracted from platform-specific installers (.deb, .exe, .pkg) |
 | **MediaInfo** | Binaries from mediaarea.net (not GitHub releases); macOS DMG extracted via 7z |
 | **MKVToolNix** | Binaries from mkvtoolnix.download; Linux via AppImage extraction; macOS x86_64 only (Rosetta); macOS support ending H2 2026 |
+| **potrace/vtracer (macOS)** | Compiled on `macos-latest`; x86_64 cross-built from the arm64 host; two thin assets, lipo'd by the consumer |
 
 ## Version Tracking
 
@@ -94,3 +98,34 @@ for current versions.
 | MediaInfo | [MediaArea/MediaInfo](https://github.com/MediaArea/MediaInfo) | Semver releases (binaries on mediaarea.net) |
 | OF-Scraper | [datawhores/OF-Scraper](https://github.com/datawhores/OF-Scraper) | PyPI releases |
 | MKVToolNix | [mkvtoolnix.download](https://mkvtoolnix.download/) | Semver releases (binaries on mkvtoolnix.download) |
+
+---
+
+## GPL optical-disc tools (started 2026-09-02, PR #25 — now on the consolidated WIP branch)
+
+Feeds MeedyaConverter's disc-backup-imaging feature (MeedyaConverter#492/#495),
+Direct distribution only, per that repo's DR-0001. All four tools are pinned in
+the `env:` block of `populate.yml`; only `ddrescue` (the one actually built) is
+tracked in `versions.json`, because `versions.json` records what was packaged.
+
+**Done:**
+- `ddrescue` (GPLv3) — Linux x86_64 build **from source**, with the source
+  tarball archived to the release as `ddrescue-<ver>.src.tar.lz`. This is the
+  working template: fetch upstream source → build → stage binary → stage
+  source. It is portable, DRM-neutral, and generally useful for any
+  block-device imaging. Wired into `check-versions` like potrace/vtracer, so
+  it only rebuilds when `DDRESCUE_VERSION` changes (or on a forced rebuild).
+
+**Follow-ups (same pattern; each needs this repo's CI to validate the build):**
+- `cdrdao` (GPLv2), `cdparanoia` (GPLv2), `wodim` / cdrkit (GPLv2) — Linux
+  builds. Their builds are finicky (autotools of varying vintage, external
+  deps: libao/libvorbis/libmad for cdrdao) and were not authored blind; add
+  them one at a time and confirm each on CI.
+- **macOS (arm64 + x86_64) builds.** The `build-tracing-tools` job (from
+  PR #26) now provides a `macos-latest` compile runner that builds two thin
+  per-arch binaries (x86_64 cross-built from the arm64 host). The disc tools
+  can follow that same pattern; the consumer `lipo`-combines them.
+
+**Do not** treat the disc-tool supply chain as complete until the macOS builds
+land and each tool's CI is green. The MeedyaConverter side (App-Store exclusion
+guards, DR-0001) is already merged on its `wip/alpha-consolidation` branch.
