@@ -3,19 +3,37 @@
 **Read this first in any new session.** Then read
 [`STANDING_RULES.md`](STANDING_RULES.md) and [`CLAUDE.md`](CLAUDE.md).
 
-Last updated: 2026-10-26 (MKVToolNix Linux + macOS fixes consolidated)
+Last updated: 2026-11-18 (model/effort standing rule added)
 
 ---
 
-## Current task — consolidated MKVToolNix Linux + macOS PR
+## Latest change — model tier + effort standing rule (2026-11-18)
+
+- Owner asked for a new standing rule: **gather** with Sonnet/Haiku at Medium
+  effort, **plan and analyse** with Opus at High, **implement** with
+  Sonnet/Haiku at Medium. It is in `STANDING_RULES.md` rule 3 (a phase table),
+  written by *tier, not name* so Codex, Ollama, Kimi, Grok, Gemini and other
+  tools can follow it. Pointers added in root `AGENTS.md`, `.OpenAI/AGENTS.md`
+  and `.claude/CLAUDE.md`.
+- **Device level is NOT done and cannot be done from a cloud session** (no
+  computer attached; a home-folder config isn't reachable). Paste-ready text and
+  the list of target files is in `DEVICE_LEVEL_RULES.md` — the owner pastes it
+  into each tool's global instructions (task 6 below).
+- Rule 3 still says Opus *may* implement when the plan calls the build complex
+  (kept from the old wording). Owner to say if that exception should go.
+- Work is on branch `claude/kind-goodall-ygobby`, restarted from `alpha`
+  (`b48141d`) after PR #30 merged. No PR opened yet (rule 11: one PR, opened
+  when the owner asks).
+
+## Previous task — consolidated MKVToolNix Linux + macOS PR (merged)
 
 - **Branch:** `claude/kind-goodall-ygobby`, targeting `alpha` through **one**
   PR with the `update-tools` label. On 2026-10-26 the owner asked for PR #28
   (macOS, branch `claude/great-galileo-116la9`) and PR #29 (Linux, this
   branch) to be merged into a single PR to avoid merge races; both were closed
   in favour of the consolidated PR and #28's branch was deleted (its commit
-  `2e028d5` is merged into this branch). Plan: get every check green, merge
-  into `alpha`, then watch the Actions runs that follow.
+  `2e028d5` is merged into this branch). **Merged into `alpha` on 2026-10-26
+  (`b48141d`)**; the only run it started was Lint Workflows, which passed.
 - **Conflict resolution:** the Linux AppImage step keeps this branch's version
   (it already fails loudly); the macOS job, Windows `::warning::`, and
   `upload-release` wiring come from #28; docs merged by hand (DEV_Status now
@@ -157,9 +175,10 @@ Last updated: 2026-10-26 (MKVToolNix Linux + macOS fixes consolidated)
 | 3 | GPL disc tools: cdrdao, cdparanoia, wodim (Linux), one at a time, each confirmed on CI | ⏳ Not started |
 | 4 | GPL disc tools: macOS builds (reuse the `build-tracing-tools` macOS pattern) | ⏳ Not started |
 | 5 | Thorough documentation pass (CHANGELOG history still says "monthly schedule") | ⏳ Not started |
-| 6 | Device-wide AI fallback rule on the owner's own machines (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`) | ❓ Owner to do locally |
+| 6 | Device-wide rules on the owner's own machines: the AI fallback rule (12) and the model/effort rule (3) — paste-ready text for the second is in `DEVICE_LEVEL_RULES.md` | ❓ Owner to do locally |
 | 7 | MKVToolNix Linux asset: bundle libraries + launchers, clean-unpack smoke test (was PR #29) | ✅ Passed on CI (run 40334308316); now in the consolidated PR |
-| 8 | Consolidated PR #30 (#28 + #29) → green → merge to `alpha` → watch post-merge Actions | ⏳ CI green; merging |
+| 8 | Consolidated PR #30 (#28 + #29) → green → merge to `alpha` → watch post-merge Actions | ✅ Merged `b48141d`; Lint passed. Release needs `alpha` → `main` |
+| 9 | Model tier + effort standing rule, repo level | ✅ Done on branch `claude/kind-goodall-ygobby` (not yet in a PR) |
 
 Open issues: #19 (publish SHA256SUMS — done on `main` by PR #20, could be
 closed), #17 (add rclone), #16 (MeedyaSuite org secrets), #8 (automatic
@@ -167,8 +186,8 @@ upstream version checking — largely done by the `check-versions` job).
 
 ## How to pick up in a fresh session
 
-1. `git fetch origin && git checkout claude/great-galileo-116la9 && git pull`
-   (or, once merged, start a new branch from `alpha`).
+1. `git fetch origin && git checkout claude/kind-goodall-ygobby && git pull`
+   (if that branch has been merged and deleted, start a new branch from `alpha`).
 2. Read this file, then `STANDING_RULES.md`, then `CLAUDE.md`.
 3. Carry on with the task queue from the first unfinished item.
 4. Keep this file updated as you go.

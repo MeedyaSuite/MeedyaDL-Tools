@@ -2,8 +2,9 @@
 
 > **Start here:** read [`HANDOFF.md`](HANDOFF.md) (current state of play) and
 > [`STANDING_RULES.md`](STANDING_RULES.md) (how we work — plain English, handoff
-> kept up to date, Opus to plan / Sonnet-Haiku to build, Codex review loop, one
-> working branch, AI-tool fallback). Both apply to every session.
+> kept up to date, Sonnet/Haiku (Medium) to gather, Opus (High) to plan,
+> Sonnet/Haiku (Medium) to build, Codex review loop, one working branch,
+> AI-tool fallback). Both apply to every session.
 
 ## Purpose
 
@@ -68,4 +69,5 @@ potrace, vtracer and ddrescue are compiled from source (for MeedyaConverter, DR-
 | `.claude/settings.json` | Project Claude Code settings (enables the `dev-team` plugin) |
 | `.claude/HANDOFF.md` | Current state of play — update as you go |
 | `.claude/STANDING_RULES.md` | Standing rules for all AI tools |
+| `.claude/DEVICE_LEVEL_RULES.md` | Paste-ready text for the owner's device-wide AI instructions |
 | `.OpenAI/AGENTS.md` | Codex/OpenAI context (points to the same rules) |

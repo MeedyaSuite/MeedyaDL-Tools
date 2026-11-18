@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **potrace + VTracer**: compiled from source for MeedyaConverter vector tracing (Linux x86_64/aarch64, macOS aarch64 + x86_64), version-pinned, with source tarballs attached to each release
 - **GNU ddrescue**: compiled from source (Linux x86_64) with its GPL source tarball attached to each release — first of the GPL optical-disc tools for MeedyaConverter
 - **SHA256SUMS**: every release publishes a `SHA256SUMS` asset; macOS FFmpeg is now a real arm64 build plus x86_64
+- **Model tier + effort standing rule**: gather (Sonnet/Haiku, Medium) → plan (Opus, High) → implement (Sonnet/Haiku, Medium), written by tier so any AI tool can follow it; paste-ready device-level text in `.claude/DEVICE_LEVEL_RULES.md`
 - **AI tooling context**: `.claude/HANDOFF.md`, `.claude/STANDING_RULES.md`, `.claude/settings.json`, `.OpenAI/`, root `AGENTS.md`
 - **9 new tools**: yt-dlp, aria2c, fpcalc, get_iplayer, Votify, gytmdl, gamdl, AMdecrypt, Wrapper
 - **Expanded platform support**: Linux aarch64, Windows ARM64, macOS ARM (Apple Silicon), Linux armhf (Raspberry Pi)

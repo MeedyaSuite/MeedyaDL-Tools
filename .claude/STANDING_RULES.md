@@ -4,7 +4,7 @@ These rules apply to **every** session on this repo, whichever AI tool is doing
 the work (Claude Code, Codex, or another). They are the single source of truth.
 `.claude/CLAUDE.md`, `.OpenAI/AGENTS.md` and the root `AGENTS.md` all point here.
 
-Last revised: 2026-09-23 (set by the repo owner)
+Last revised: 2026-11-18 (set by the repo owner)
 
 ---
 
@@ -24,13 +24,30 @@ away.
 ## 3. How to think, plan and build
 
 - Think hard about the work before starting. Use workflows to plan and do the work.
-- Do deep analysis and deep planning with **Opus agents, one after another
-  (not in parallel)**. The latest Opus (Opus 5.5 at time of writing) is cheaper
-  than, and at least as good as, the latest Fable.
-- Do the actual building with **Sonnet or Haiku**, whichever fits best. If the
-  building work is complex, use **Opus**.
+- Work in three phases, each with its own model tier **and effort level**:
+
+  | Phase | What it covers | Model tier | Effort |
+  | ----- | -------------- | ---------- | ------ |
+  | 1. Gather | Read code, search, fetch logs and docs, collect facts | Sonnet or Haiku | Medium |
+  | 2. Plan and analyse | Deep analysis, design, decisions, weighing findings | Opus | High |
+  | 3. Implement | Write and edit code, run commands, update docs | Sonnet or Haiku | Medium |
+
+- Run the planning and analysis agents **one after another (not in
+  parallel)**. The latest Opus (Opus 5.5 at time of writing) is cheaper than,
+  and at least as good as, the latest Fable.
+- Pick Sonnet or Haiku, whichever fits best. If the plan says the building
+  work is complex, Opus may do the implementation instead.
+- **Other AI tools** (Codex, Ollama, Kimi, Grok, Gemini and any other) follow
+  the same phases by **tier, not by name**: use the strongest reasoning model
+  you have for phase 2, and a fast or mid-size model for phases 1 and 3. Set
+  "Medium" and "High" through the tool's own reasoning-effort setting if it has
+  one. If a tool can't pick a model or effort per phase (for example a single
+  local model), use the best one available and keep the phase order.
+- Small tasks may bundle the phases (rule 7), but still plan before building.
 - Aim: use tokens/credits efficiently while still producing top-quality,
   correct code. **GIRFT — Get It Right First Time.**
+- This rule also applies device-wide: paste-ready text for each tool's global
+  instructions is in [`DEVICE_LEVEL_RULES.md`](DEVICE_LEVEL_RULES.md).
 
 ## 4. Use plugins to help
 

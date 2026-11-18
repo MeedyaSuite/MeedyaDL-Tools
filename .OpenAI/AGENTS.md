@@ -26,6 +26,9 @@ and docs. Binaries live in GitHub Releases, not in git.
 ## Rules in brief
 
 - Plain English when reporting back.
+- Model tiers and effort (rule 3): gather with a fast/mid-size model at Medium
+  effort, plan with your strongest reasoning model at High, build with a
+  fast/mid-size model at Medium.
 - One working branch (see handoff); no extra pull requests.
 - After each task: commit + push, update the GitHub issue, update `.claude/`,
   `.OpenAI/` and the handoff.

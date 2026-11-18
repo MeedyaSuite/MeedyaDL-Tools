@@ -24,3 +24,8 @@ Short-lived notes for Codex. The authoritative state is always
   `alpha`): new `mkvtoolnix-macos` job in `populate.yml` packages the official
   arm64 + x86_64 DMGs with hdiutil. Ready for a Codex review of that job's shell
   script (dependency copying, error handling via the EXIT trap).
+- 2026-11-18: New standing rule 3 (model tier + effort): gather = fast/mid-size
+  model at Medium, plan = strongest reasoning model at High, implement =
+  fast/mid-size at Medium. Paste-ready device-level text in
+  `.claude/DEVICE_LEVEL_RULES.md`. Docs only, nothing for Codex to review in
+  code. Branch `claude/kind-goodall-ygobby` restarted from `alpha` after PR #30.
