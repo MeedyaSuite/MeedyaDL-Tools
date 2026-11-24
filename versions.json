@@ -1,7 +1,7 @@
 {
-  "ffmpeg": "2026-11-22T12:56:21Z",
+  "ffmpeg": "2026-11-24T12:59:55Z",
   "ffmpeg_macos_arm": "91",
-  "yt-dlp": "2026.10.26",
+  "yt-dlp": "2026.11.23",
   "mp4decrypt": "1-6-0-641",
   "mp4box": "",
   "nm3u8dlre": "v0.6.0-beta",
@@ -14,6 +14,6 @@
   "votify": "1.9.9",
   "gytmdl": "2.1.6",
   "gamdl": "4.1.1",
-  "ofscraper": "3.17.1",
-  "mkvtoolnix": "103.0"
+  "ofscraper": "3.18.0",
+  "mkvtoolnix": "104.0"
 }
